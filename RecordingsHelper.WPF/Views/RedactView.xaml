@@ -44,13 +44,14 @@
             </DockPanel>
         </materialDesign:ColorZone>
 
-        <!-- Main Content -->
-        <Grid Grid.Row="1" Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+        <!-- Main Content with ScrollViewer -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
             <!-- File Selection -->
             <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
@@ -172,10 +173,26 @@
 
                         <!-- Start Time -->
                         <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
-                            <TextBlock Text="Start Time (mm:ss.fff)" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewSegmentStart, Converter={StaticResource TimeSpanToStringConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBlock Text="Start Time" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding StartTimeText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     FontFamily="Consolas"/>
+                                     FontFamily="Consolas"
+                                     materialDesign:HintAssist.Hint="Type: 90.5 or 1:30 or 1:30:00.500"
+                                     GotFocus="TimeTextBox_GotFocus">
+                                <TextBox.ToolTip>
+                                    <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Text="Easy input formats:"/>
+                                        <LineBreak/><LineBreak/>
+                                        <Run FontWeight="Bold" Text="Seconds:"/> 30, 45.5, 90
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Minutes:"/> 1:30, 2:15.5
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Hours:"/> 1:30:00, 1:30:45.250
+                                        <LineBreak/><LineBreak/>
+                                        Just type naturally - formatting happens automatically!
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </TextBox>
                         </StackPanel>
 
                         <Button Grid.Row="0" Grid.Column="1" 
@@ -188,10 +205,26 @@
 
                         <!-- End Time -->
                         <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,8,8">
-                            <TextBlock Text="End Time (mm:ss.fff)" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewSegmentEnd, Converter={StaticResource TimeSpanToStringConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBlock Text="End Time" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding EndTimeText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     FontFamily="Consolas"/>
+                                     FontFamily="Consolas"
+                                     materialDesign:HintAssist.Hint="Type: 120.5 or 2:00 or 2:00:00.250"
+                                     GotFocus="TimeTextBox_GotFocus">
+                                <TextBox.ToolTip>
+                                    <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Text="Easy input formats:"/>
+                                        <LineBreak/><LineBreak/>
+                                        <Run FontWeight="Bold" Text="Seconds:"/> 60, 75.5, 120
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Minutes:"/> 2:00, 3:45.5
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Hours:"/> 2:00:00, 2:30:15.750
+                                        <LineBreak/><LineBreak/>
+                                        Just type naturally - formatting happens automatically!
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </TextBox>
                         </StackPanel>
 
                         <Button Grid.Row="0" Grid.Column="3" 
@@ -244,8 +277,9 @@
                                        VerticalAlignment="Center"/>
                         </DockPanel>
 
-                        <ListView ItemsSource="{Binding RedactionSegments}">
-                            <ListView.ItemTemplate>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding RedactionSegments}">
+                                <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource MaterialDesignDivider}" 
                                             BorderThickness="0,0,0,1" 
@@ -276,13 +310,13 @@
                                                 </StackPanel>
                                                 <TextBlock Opacity="0.7">
                                                     <Run Text="Duration: "/>
-                                                    <Run Text="{Binding DurationFormatted}" FontFamily="Consolas"/>
+                                                    <Run Text="{Binding DurationFormatted, Mode=OneWay}" FontFamily="Consolas"/>
                                                 </TextBlock>
                                             </StackPanel>
 
                                             <Button Grid.Column="2" 
                                                     Style="{StaticResource MaterialDesignIconButton}"
-                                                    Command="{Binding DataContext.RemoveSegmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                    Command="{Binding DataContext.RemoveSegmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
                                                     ToolTip="Remove">
                                                 <materialDesign:PackIcon Kind="Close"/>
@@ -290,23 +324,31 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        </ScrollViewer>
                     </DockPanel>
                 </materialDesign:Card>
 
                 <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Center" Background="Transparent"/>
 
                 <!-- Settings -->
-                <materialDesign:Card Grid.Column="2" Padding="16">
+                <materialDesign:Card Grid.Column="2" Padding="16" Background="{DynamicResource MaterialDesignPaper}">
                     <StackPanel>
-                        <TextBlock Text="Processing Options" 
+                        <TextBlock Text="Processing Mode" 
                                    Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="0,0,0,8"
+                                   Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        
+                        <TextBlock Text="Choose how to handle selected segments:"
+                                   Opacity="0.7"
+                                   TextWrapping="Wrap"
                                    Margin="0,0,0,16"/>
 
                         <RadioButton Content="Remove Segments" 
                                      IsChecked="{Binding MuteSegments, Converter={StaticResource InverseBooleanConverter}}"
-                                     Margin="0,0,0,12"
+                                     Margin="0,0,0,16"
+                                     FontSize="14"
                                      GroupName="ProcessingMode">
                             <RadioButton.ToolTip>
                                 <TextBlock Text="Completely remove the selected segments from the audio file. This will shorten the total duration."
@@ -317,7 +359,8 @@
 
                         <RadioButton Content="Mute Segments" 
                                      IsChecked="{Binding MuteSegments}"
-                                     Margin="0,0,0,16"
+                                     Margin="0,0,0,24"
+                                     FontSize="14"
                                      GroupName="ProcessingMode">
                             <RadioButton.ToolTip>
                                 <TextBlock Text="Replace the selected segments with silence. This preserves the total duration and timing."
@@ -342,6 +385,7 @@
                 </materialDesign:Card>
             </Grid>
         </Grid>
+        </ScrollViewer>
 
         <!-- Bottom Action Bar -->
         <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16">

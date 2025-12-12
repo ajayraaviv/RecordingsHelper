@@ -13,8 +13,15 @@ public class AudioFileItem : INotifyPropertyChanged
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public TimeSpan Duration { get; set; }
-    public string DurationFormatted => Duration.ToString(@"mm\:ss\.fff");
+    public string DurationFormatted => FormatTimeSpan(Duration);
     public string Format { get; set; } = string.Empty;
+    
+    private static string FormatTimeSpan(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return ts.ToString(@"hh\:mm\:ss\.fff");
+        return ts.ToString(@"mm\:ss\.fff");
+    }
     
     public int Order
     {
@@ -60,8 +67,8 @@ public class AudioFileItem : INotifyPropertyChanged
         }
     }
     
-    public string StartTimeFormatted => StartTime.ToString(@"mm\:ss\.fff");
-    public string EndTimeFormatted => EndTime.ToString(@"mm\:ss\.fff");
+    public string StartTimeFormatted => FormatTimeSpan(StartTime);
+    public string EndTimeFormatted => FormatTimeSpan(EndTime);
     public string TimelineInfo => $"{StartTimeFormatted} → {EndTimeFormatted}";
 
     public event PropertyChangedEventHandler? PropertyChanged;

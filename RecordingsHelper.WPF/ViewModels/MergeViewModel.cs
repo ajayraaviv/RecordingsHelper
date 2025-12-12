@@ -196,6 +196,9 @@ public partial class MergeViewModel : ObservableObject
 
             StatusMessage = $"Successfully merged {AudioFiles.Count} files!";
             MessageBox.Show($"Audio files merged successfully!\n\nSaved to: {saveFileDialog.FileName}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            
+            // Reset state after successful merge
+            ResetState();
         }
         catch (Exception ex)
         {
@@ -206,5 +209,21 @@ public partial class MergeViewModel : ObservableObject
         {
             IsProcessing = false;
         }
+    }
+    
+    private void ResetState()
+    {
+        // Clear all files
+        AudioFiles.Clear();
+        
+        // Reset settings to defaults
+        NormalizeAudio = false;
+        CrossfadeDuration = 0.0;
+        
+        // Clear calculated properties
+        TotalDuration = TimeSpan.Zero;
+        TotalDurationFormatted = "00:00.000";
+        
+        StatusMessage = "Ready to merge new files";
     }
 }

@@ -6,9 +6,16 @@ public class RedactionSegment
 {
     public TimeSpan StartTime { get; set; }
     public TimeSpan EndTime { get; set; }
-    public string StartTimeFormatted => StartTime.ToString(@"mm\:ss\.fff");
-    public string EndTimeFormatted => EndTime.ToString(@"mm\:ss\.fff");
+    public string StartTimeFormatted => FormatTimeSpan(StartTime);
+    public string EndTimeFormatted => FormatTimeSpan(EndTime);
     public TimeSpan Duration => EndTime - StartTime;
-    public string DurationFormatted => Duration.ToString(@"mm\:ss\.fff");
+    public string DurationFormatted => FormatTimeSpan(Duration);
     public bool IsValid => EndTime > StartTime && StartTime >= TimeSpan.Zero;
+    
+    private static string FormatTimeSpan(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return ts.ToString(@"hh\:mm\:ss\.fff");
+        return ts.ToString(@"mm\:ss\.fff");
+    }
 }

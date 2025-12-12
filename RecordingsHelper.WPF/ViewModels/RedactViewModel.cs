@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -54,6 +55,71 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private TimeSpan _newSegmentEnd;
+    
+    // String properties for free text entry
+    [ObservableProperty]
+    private string _startTimeText = "00:00.000";
+    
+    [ObservableProperty]
+    private string _endTimeText = "00:00.000";
+
+    partial void OnStartTimeTextChanged(string value)
+    {
+        var parsed = ParseTimeSpan(value);
+        NewSegmentStart = parsed;
+        // Format the text after parsing (on LostFocus this will show formatted version)
+        if (!string.IsNullOrWhiteSpace(value) && value != FormatTimeSpanHelper(parsed))
+        {
+            StartTimeText = FormatTimeSpanHelper(parsed);
+        }
+    }
+    
+    partial void OnEndTimeTextChanged(string value)
+    {
+        var parsed = ParseTimeSpan(value);
+        NewSegmentEnd = parsed;
+        // Format the text after parsing (on LostFocus this will show formatted version)
+        if (!string.IsNullOrWhiteSpace(value) && value != FormatTimeSpanHelper(parsed))
+        {
+            EndTimeText = FormatTimeSpanHelper(parsed);
+        }
+    }
+    
+    private static TimeSpan ParseTimeSpan(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return TimeSpan.Zero;
+
+        input = input.Trim();
+
+        // Try with hours first (hh:mm:ss.fff or hh:mm:ss)
+        if (TimeSpan.TryParseExact(input, @"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture, out var timeSpan))
+            return timeSpan;
+        if (TimeSpan.TryParseExact(input, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+
+        // Try without hours (mm:ss.fff or mm:ss)
+        if (TimeSpan.TryParseExact(input, @"mm\:ss\.fff", CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+        if (TimeSpan.TryParseExact(input, @"mm\:ss", CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+
+        // Try with 2-digit or 1-digit milliseconds
+        if (TimeSpan.TryParseExact(input, @"mm\:ss\.ff", CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+        if (TimeSpan.TryParseExact(input, @"mm\:ss\.f", CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+
+        // Try just seconds as decimal (e.g., "45.5")
+        if (double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+            return TimeSpan.FromSeconds(seconds);
+
+        // Try standard TimeSpan parsing
+        if (TimeSpan.TryParse(input, CultureInfo.InvariantCulture, out timeSpan))
+            return timeSpan;
+
+        return TimeSpan.Zero;
+    }
 
     [ObservableProperty]
     private bool _isProcessing;
@@ -177,24 +243,37 @@ public partial class RedactViewModel : ObservableObject, IDisposable
     private void SetStartTime()
     {
         NewSegmentStart = CurrentPosition;
+        StartTimeText = FormatTimeSpanHelper(CurrentPosition);
     }
 
     [RelayCommand]
     private void SetEndTime()
     {
         NewSegmentEnd = CurrentPosition;
+        EndTimeText = FormatTimeSpanHelper(CurrentPosition);
+    }
+    
+    private static string FormatTimeSpanHelper(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1)
+            return ts.ToString(@"hh\:mm\:ss\.fff");
+        return ts.ToString(@"mm\:ss\.fff");
     }
 
     [RelayCommand]
     private void AddSegment()
     {
-        if (NewSegmentEnd <= NewSegmentStart)
+        // Parse current text values to ensure we have latest input
+        var start = ParseTimeSpan(StartTimeText);
+        var end = ParseTimeSpan(EndTimeText);
+        
+        if (end <= start)
         {
             MessageBox.Show("End time must be greater than start time.", "Invalid Segment", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (NewSegmentEnd > TotalDuration)
+        if (end > TotalDuration)
         {
             MessageBox.Show("End time cannot exceed the total duration.", "Invalid Segment", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -202,8 +281,8 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
         var segment = new RedactionSegment
         {
-            StartTime = NewSegmentStart,
-            EndTime = NewSegmentEnd
+            StartTime = start,
+            EndTime = end
         };
 
         RedactionSegments.Add(segment);
@@ -212,6 +291,8 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         // Reset inputs
         NewSegmentStart = TimeSpan.Zero;
         NewSegmentEnd = TimeSpan.Zero;
+        StartTimeText = "00:00.000";
+        EndTimeText = "00:00.000";
     }
 
     [RelayCommand]
@@ -282,6 +363,9 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
             StatusMessage = $"Successfully processed {RedactionSegments.Count} segments!";
             MessageBox.Show($"Audio file processed successfully!\n\nSaved to: {saveFileDialog.FileName}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            
+            // Reset state after successful processing
+            ResetState();
         }
         catch (Exception ex)
         {
@@ -292,6 +376,31 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         {
             IsProcessing = false;
         }
+    }
+    
+    private void ResetState()
+    {
+        // Stop and unload audio player
+        if (IsPlaying || IsPaused)
+        {
+            Stop();
+        }
+        _audioPlayer.Stop();
+        
+        // Clear all state
+        LoadedFilePath = null;
+        LoadedFileName = string.Empty;
+        TotalDuration = TimeSpan.Zero;
+        CurrentPosition = TimeSpan.Zero;
+        SliderPosition = 0;
+        IsFileLoaded = false;
+        RedactionSegments.Clear();
+        NewSegmentStart = TimeSpan.Zero;
+        NewSegmentEnd = TimeSpan.Zero;
+        StartTimeText = "00:00.000";
+        EndTimeText = "00:00.000";
+        MuteSegments = false;
+        StatusMessage = "Ready to load a new file";
     }
 
     partial void OnCurrentPositionChanged(TimeSpan value)
