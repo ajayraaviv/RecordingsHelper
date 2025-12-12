@@ -16,6 +16,8 @@ A reusable .NET class library for audio file manipulation, specializing in stitc
 - ✅ **High-quality resampling** - automatic format matching
 - ✅ **Duration calculation** - get total playback time
 - ✅ **Stream support** - work with WaveStreams directly
+- ✅ **Remove segments** - strip out unwanted sections from audio
+- ✅ **Mute segments** - replace sections with silence while preserving timeline
 
 ## Supported Formats
 
@@ -95,12 +97,41 @@ var duration = stitcher.GetTotalDuration(files);
 Console.WriteLine($"Total: {duration}");
 ```
 
+### Audio Editing
+
+```csharp
+using RecordingsHelper.Core.Services;
+using RecordingsHelper.Core.Models;
+
+var editor = new AudioEditor();
+
+// Remove unwanted segments (shortens file, changes timeline)
+var segmentsToRemove = new List<AudioSegment>
+{
+    AudioSegment.FromSeconds(10, 15),   // Remove 10-15 seconds
+    AudioSegment.FromSeconds(45, 52),   // Remove 45-52 seconds
+};
+editor.RemoveSegments("podcast.wav", "edited.wav", segmentsToRemove);
+
+// Mute segments (preserves duration and timeline)
+var segmentsToMute = new List<AudioSegment>
+{
+    AudioSegment.FromSeconds(30, 33),   // Mute 30-33 seconds
+};
+editor.MuteSegments("interview.wav", "censored.wav", segmentsToMute);
+
+// Check new duration after removal
+var newDuration = editor.GetDurationAfterRemoval("podcast.wav", segmentsToRemove);
+Console.WriteLine($"New duration: {newDuration}");
+```
+
 ## API Reference
 
 ### Namespaces
 
-- `RecordingsHelper.Core.Services` - Audio stitching services
+- `RecordingsHelper.Core.Services` - Audio stitching and editing services
 - `RecordingsHelper.Core.Extensions` - Format conversion extensions
+- `RecordingsHelper.Core.Models` - Data models for audio segments
 
 ### AudioStitcher Class
 
@@ -179,6 +210,79 @@ Opens an audio file as a WaveStream for custom processing.
 bool IsSupportedAudioFormat(this string filePath)
 ```
 Checks if the file format is supported.
+
+### AudioEditor Class
+
+Located in `RecordingsHelper.Core.Services`
+
+#### Methods
+
+**RemoveSegments**
+```csharp
+void RemoveSegments(string inputFile, string outputFile, List<AudioSegment> segmentsToRemove)
+```
+Removes specified segments from an audio file. Processes segments right-to-left to maintain timeline accuracy. Shortens the file duration.
+
+**RemoveSegment**
+```csharp
+void RemoveSegment(string inputFile, string outputFile, TimeSpan start, TimeSpan end)
+```
+Removes a single segment from an audio file.
+
+**RemoveSegmentsInSeconds**
+```csharp
+void RemoveSegmentsInSeconds(string inputFile, string outputFile, List<(double start, double end)> segments)
+```
+Removes segments specified as (start, end) tuples in seconds.
+
+**MuteSegments**
+```csharp
+void MuteSegments(string inputFile, string outputFile, List<AudioSegment> segmentsToMute)
+```
+Mutes specified segments by replacing them with silence. Preserves the file duration and timeline.
+
+**MuteSegment**
+```csharp
+void MuteSegment(string inputFile, string outputFile, TimeSpan start, TimeSpan end)
+```
+Mutes a single segment in an audio file.
+
+**MuteSegmentsInSeconds**
+```csharp
+void MuteSegmentsInSeconds(string inputFile, string outputFile, List<(double start, double end)> segments)
+```
+Mutes segments specified as (start, end) tuples in seconds.
+
+**GetDurationAfterRemoval**
+```csharp
+TimeSpan GetDurationAfterRemoval(string inputFile, List<AudioSegment> segmentsToRemove)
+```
+Calculates the duration of the file after segments are removed.
+
+### AudioSegment Class
+
+Located in `RecordingsHelper.Core.Models`
+
+#### Properties
+
+- `TimeSpan Start` - Start time of the segment
+- `TimeSpan End` - End time of the segment
+- `TimeSpan Duration` - Duration of the segment (read-only)
+- `bool IsValid` - Returns true if the segment is valid (read-only)
+
+#### Static Methods
+
+**FromSeconds**
+```csharp
+static AudioSegment FromSeconds(double startSeconds, double endSeconds)
+```
+Creates a segment from start and end times in seconds.
+
+**FromDuration**
+```csharp
+static AudioSegment FromDuration(TimeSpan start, TimeSpan duration)
+```
+Creates a segment from start time and duration.
 
 ## Integration Examples
 

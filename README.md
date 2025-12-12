@@ -82,6 +82,7 @@ dotnet add reference path/to/RecordingsHelper.Core/RecordingsHelper.Core.csproj
 ```csharp
 using RecordingsHelper.Core.Services;
 using RecordingsHelper.Core.Extensions;
+using RecordingsHelper.Core.Models;
 
 // Stitch audio files
 var stitcher = new AudioStitcher();
@@ -96,6 +97,19 @@ stitcher.StitchAudioFiles(files, "podcast.wav", insertSilence: 1000);
 
 // Normalize audio levels
 stitcher.StitchWithNormalization(files, "balanced.wav");
+
+// Remove unwanted segments
+var editor = new AudioEditor();
+var segmentsToRemove = new List<AudioSegment>
+{
+    AudioSegment.FromSeconds(10, 15),
+    AudioSegment.FromSeconds(45, 52)
+};
+editor.RemoveSegments("recording.wav", "edited.wav", segmentsToRemove);
+
+// Mute sensitive sections (preserves timeline)
+editor.MuteSegment("interview.wav", "censored.wav", 
+    TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(33));
 ```
 
 ## Features
@@ -107,7 +121,9 @@ stitcher.StitchWithNormalization(files, "balanced.wav");
 ✅ **Normalization** - Balance volume levels across files  
 ✅ **High-Quality Resampling** - Automatic format matching  
 ✅ **Duration Calculation** - Get total playback time  
-✅ **Stream Support** - Work with WaveStreams directly
+✅ **Stream Support** - Work with WaveStreams directly  
+✅ **Remove Segments** - Strip out unwanted sections (changes timeline)  
+✅ **Mute Segments** - Replace sections with silence (preserves timeline)
 
 ## Supported Formats
 
@@ -131,6 +147,7 @@ The solution uses:
 - **RecordingsHelper.Core/README.md** - Class library API documentation
 - **RecordingsHelper/README.md** - Console application guide
 - **RecordingsHelper/EXAMPLES.md** - Real-world usage scenarios
+- **RecordingsHelper/EDITING_GUIDE.md** - Comprehensive audio editing guide
 
 ## Integration Examples
 
