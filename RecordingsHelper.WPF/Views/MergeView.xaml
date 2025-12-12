@@ -1,0 +1,283 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.MergeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RecordingsHelper.WPF.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </UserControl.InputBindings>
+    
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter"/>
+    </UserControl.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                <TextBlock Text="Merge Audio Files" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- File List -->
+            <materialDesign:Card Grid.Column="0" Padding="16">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" 
+                               Text="Audio Files" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
+                        <Button Command="{Binding AddFilesCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FilePlus" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Add Files"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                        <Button Command="{Binding ClearCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="DeleteSweep" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Clear All"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                    </StackPanel>
+
+                    <ListView ItemsSource="{Binding AudioFiles}" 
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{DynamicResource MaterialDesignDivider}" 
+                                        BorderThickness="0,0,0,1" 
+                                        Padding="8"
+                                        Margin="0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Order Number -->
+                                        <TextBlock Grid.Column="0" 
+                                                   Text="{Binding Order}" 
+                                                   FontWeight="Bold" 
+                                                   FontSize="16"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,16,0"
+                                                   Width="30"/>
+
+                                        <!-- File Icon -->
+                                        <materialDesign:PackIcon Grid.Column="1" 
+                                                                 Kind="FileMusic" 
+                                                                 Width="24" Height="24"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="0,0,12,0"/>
+
+                                        <!-- File Info -->
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding FileName}" FontWeight="Medium"/>
+                                            <StackPanel Orientation="Horizontal" Opacity="0.7">
+                                                <TextBlock Text="{Binding Format}" Margin="0,0,8,0"/>
+                                                <TextBlock Text="•" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Duration: "/>
+                                                <TextBlock Text="{Binding DurationFormatted}" FontFamily="Consolas" Margin="0,0,8,0"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Opacity="0.7">
+                                                <TextBlock Text="Timeline: "/>
+                                                <TextBlock Text="{Binding TimelineInfo}" FontFamily="Consolas"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Move Buttons -->
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="8,0">
+                                            <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                    Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Move Up">
+                                                <materialDesign:PackIcon Kind="ArrowUp"/>
+                                            </Button>
+                                            <Button Style="{StaticResource MaterialDesignIconButton}"
+                                                    Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Move Down">
+                                                <materialDesign:PackIcon Kind="ArrowDown"/>
+                                            </Button>
+                                        </StackPanel>
+
+                                        <!-- Remove Button -->
+                                        <Button Grid.Column="4" 
+                                                Style="{StaticResource MaterialDesignIconButton}"
+                                                Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Remove">
+                                            <materialDesign:PackIcon Kind="Close"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </DockPanel>
+            </materialDesign:Card>
+
+            <!-- Divider -->
+            <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Center" Background="Transparent"/>
+
+            <!-- Settings Panel -->
+            <materialDesign:Card Grid.Column="2" Padding="16">
+                <StackPanel>
+                    <TextBlock Text="Merge Settings" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Normalize Audio -->
+                    <CheckBox Content="Normalize Audio" 
+                              IsChecked="{Binding NormalizeAudio}"
+                              Margin="0,0,0,16">
+                        <CheckBox.ToolTip>
+                            <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                <Run FontWeight="Bold" Text="Normalize Audio:"/>
+                                <LineBreak/>
+                                Adjusts volume levels across all files to be consistent. Useful when merging files with different recording volumes (e.g., quiet intro, loud content). Prevents jarring volume changes in the final output.
+                                <LineBreak/><LineBreak/>
+                                <Run FontWeight="Bold" Text="Recommended:"/> When files have varying volume levels.
+                            </TextBlock>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+
+                    <!-- Crossfade Duration -->
+                    <TextBlock Text="Crossfade Duration (seconds)" 
+                               Margin="0,0,0,8"/>
+                    <TextBox Text="{Binding CrossfadeDuration, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,16">
+                        <TextBox.ToolTip>
+                            <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                <Run FontWeight="Bold" Text="Crossfade Duration:"/>
+                                <LineBreak/>
+                                Creates smooth transitions between files by overlapping the end of one file with the beginning of the next. The first file fades out while the second fades in.
+                                <LineBreak/><LineBreak/>
+                                <Run FontWeight="Bold" Text="0 seconds:"/> Instant cut (no overlap)
+                                <LineBreak/>
+                                <Run FontWeight="Bold" Text="0.5-2 seconds:"/> Smooth, professional transitions (recommended)
+                                <LineBreak/>
+                                <Run FontWeight="Bold" Text="3+ seconds:"/> Long, gradual blending
+                            </TextBlock>
+                        </TextBox.ToolTip>
+                    </TextBox>
+
+                    <!-- Info -->
+                    <Border Background="{DynamicResource MaterialDesignDivider}" 
+                            Padding="12" 
+                            CornerRadius="4"
+                            Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Total Files:" FontWeight="Medium"/>
+                            <TextBlock Text="{Binding AudioFiles.Count}" 
+                                       FontSize="24" 
+                                       FontWeight="Bold"
+                                       Margin="0,4,0,8"/>
+                            
+                            <TextBlock Text="Total Duration:" FontWeight="Medium" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding TotalDurationFormatted}" 
+                                       FontSize="20" 
+                                       FontWeight="Bold"
+                                       FontFamily="Consolas"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </materialDesign:Card>
+        </Grid>
+
+        <!-- Bottom Action Bar -->
+        <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,16,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Home" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Home"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+                
+                <Button DockPanel.Dock="Right" 
+                        Command="{Binding MergeFilesCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                        Height="40"
+                        Padding="32,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Merge" 
+                                                     VerticalAlignment="Center" 
+                                                     Margin="0,0,8,0"
+                                                     Visibility="{Binding IsProcessing, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                         Width="16" Height="16"
+                                         IsIndeterminate="True"
+                                         Margin="0,0,8,0"
+                                         Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <TextBlock Text="Merge Files" 
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsProcessing, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                            <TextBlock Text="Processing..." 
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+
+                <TextBlock Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center"
+                           FontStyle="Italic"
+                           Opacity="0.8"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+    </Grid>
+</UserControl>

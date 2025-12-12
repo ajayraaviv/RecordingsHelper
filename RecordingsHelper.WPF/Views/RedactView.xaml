@@ -1,0 +1,395 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.RedactView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RecordingsHelper.WPF.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </UserControl.InputBindings>
+    
+    <UserControl.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                <TextBlock Text="Redact Audio Segments" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- File Selection -->
+            <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding LoadFileCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FolderOpen" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Load Audio File"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                        
+                        <Button Command="{Binding UnloadFileCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                IsEnabled="{Binding IsFileLoaded}"
+                                ToolTip="Clear the loaded file and reset">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Close" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Clear File"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Margin="0,16,0,0">
+                        <TextBlock Text="{Binding LoadedFileName}" 
+                                   FontWeight="Medium" 
+                                   FontSize="16"/>
+                        <TextBlock Opacity="0.7">
+                            <Run Text="Duration: "/>
+                            <Run Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Audio Player -->
+            <materialDesign:Card Grid.Row="1" 
+                                 Padding="16" 
+                                 Margin="0,0,0,16"
+                                 Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Audio Player" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Timeline -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" 
+                                   Text="{Binding CurrentPosition, Converter={StaticResource TimeSpanToStringConverter}}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0"
+                                   FontFamily="Consolas"/>
+
+                        <Slider Grid.Column="1" 
+                                Minimum="0" 
+                                Maximum="{Binding TotalDuration.TotalMilliseconds}"
+                                Value="{Binding SliderPosition, Mode=TwoWay}"
+                                TickFrequency="100"
+                                IsSnapToTickEnabled="False"
+                                VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Column="2" 
+                                   Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   FontFamily="Consolas"/>
+                    </Grid>
+
+                    <!-- Playback Controls -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
+                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                Command="{Binding PlayCommand}"
+                                ToolTip="Play"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Play" Width="32" Height="32"/>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                Command="{Binding PauseCommand}"
+                                ToolTip="Pause"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Pause" Width="32" Height="32"/>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                Command="{Binding StopCommand}"
+                                ToolTip="Stop"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Stop" Width="32" Height="32"/>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Segment Selection -->
+                    <Separator Margin="0,0,0,16"/>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Start Time -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                            <TextBlock Text="Start Time (mm:ss.fff)" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewSegmentStart, Converter={StaticResource TimeSpanToStringConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     FontFamily="Consolas"/>
+                        </StackPanel>
+
+                        <Button Grid.Row="0" Grid.Column="1" 
+                                Content="Set" 
+                                Command="{Binding SetStartTimeCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                VerticalAlignment="Bottom"
+                                Margin="0,0,8,8"
+                                ToolTip="Set start time to current position"/>
+
+                        <!-- End Time -->
+                        <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,8,8">
+                            <TextBlock Text="End Time (mm:ss.fff)" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewSegmentEnd, Converter={StaticResource TimeSpanToStringConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     FontFamily="Consolas"/>
+                        </StackPanel>
+
+                        <Button Grid.Row="0" Grid.Column="3" 
+                                Content="Set" 
+                                Command="{Binding SetEndTimeCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                VerticalAlignment="Bottom"
+                                Margin="0,0,0,8"
+                                ToolTip="Set end time to current position"/>
+
+                        <!-- Add Segment Button -->
+                        <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                                Command="{Binding AddSegmentCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,8">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Plus" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Add Redaction Segment"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Segments List -->
+            <Grid Grid.Row="2" Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Segments List -->
+                <materialDesign:Card Grid.Column="0" Padding="16">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                            <Button DockPanel.Dock="Right" 
+                                    Command="{Binding ClearSegmentsCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}">
+                                <Button.Content>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="DeleteSweep" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Clear All"/>
+                                    </StackPanel>
+                                </Button.Content>
+                            </Button>
+                            <TextBlock Text="Redaction Segments" 
+                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+
+                        <ListView ItemsSource="{Binding RedactionSegments}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource MaterialDesignDivider}" 
+                                            BorderThickness="0,0,0,1" 
+                                            Padding="8"
+                                            Margin="0,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <materialDesign:PackIcon Grid.Column="0" 
+                                                                     Kind="ContentCut" 
+                                                                     Width="24" Height="24"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,12,0"/>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding StartTimeFormatted}" 
+                                                               FontFamily="Consolas"
+                                                               FontWeight="Medium"/>
+                                                    <TextBlock Text=" → " Margin="4,0"/>
+                                                    <TextBlock Text="{Binding EndTimeFormatted}" 
+                                                               FontFamily="Consolas"
+                                                               FontWeight="Medium"/>
+                                                </StackPanel>
+                                                <TextBlock Opacity="0.7">
+                                                    <Run Text="Duration: "/>
+                                                    <Run Text="{Binding DurationFormatted}" FontFamily="Consolas"/>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="2" 
+                                                    Style="{StaticResource MaterialDesignIconButton}"
+                                                    Command="{Binding DataContext.RemoveSegmentCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Remove">
+                                                <materialDesign:PackIcon Kind="Close"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Center" Background="Transparent"/>
+
+                <!-- Settings -->
+                <materialDesign:Card Grid.Column="2" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Processing Options" 
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="0,0,0,16"/>
+
+                        <RadioButton Content="Remove Segments" 
+                                     IsChecked="{Binding MuteSegments, Converter={StaticResource InverseBooleanConverter}}"
+                                     Margin="0,0,0,12"
+                                     GroupName="ProcessingMode">
+                            <RadioButton.ToolTip>
+                                <TextBlock Text="Completely remove the selected segments from the audio file. This will shorten the total duration."
+                                           TextWrapping="Wrap"
+                                           MaxWidth="200"/>
+                            </RadioButton.ToolTip>
+                        </RadioButton>
+
+                        <RadioButton Content="Mute Segments" 
+                                     IsChecked="{Binding MuteSegments}"
+                                     Margin="0,0,0,16"
+                                     GroupName="ProcessingMode">
+                            <RadioButton.ToolTip>
+                                <TextBlock Text="Replace the selected segments with silence. This preserves the total duration and timing."
+                                           TextWrapping="Wrap"
+                                           MaxWidth="200"/>
+                            </RadioButton.ToolTip>
+                        </RadioButton>
+
+                        <Border Background="{DynamicResource MaterialDesignDivider}" 
+                                Padding="12" 
+                                CornerRadius="4"
+                                Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Total Segments:" FontWeight="Medium"/>
+                                <TextBlock Text="{Binding RedactionSegments.Count}" 
+                                           FontSize="24" 
+                                           FontWeight="Bold"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </materialDesign:Card>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom Action Bar -->
+        <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,16,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Home" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Home"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+                
+                <Button DockPanel.Dock="Right" 
+                        Command="{Binding ProcessFileCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                        Height="40"
+                        Padding="32,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Check" 
+                                                     VerticalAlignment="Center" 
+                                                     Margin="0,0,8,0"
+                                                     Visibility="{Binding IsProcessing, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                         Width="16" Height="16"
+                                         IsIndeterminate="True"
+                                         Margin="0,0,8,0"
+                                         Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <TextBlock Text="Process File" 
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsProcessing, Converter={StaticResource InverseBoolToVisConverter}}"/>
+                            <TextBlock Text="Processing..." 
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+
+                <TextBlock Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center"
+                           FontStyle="Italic"
+                           Opacity="0.8"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+    </Grid>
+</UserControl>

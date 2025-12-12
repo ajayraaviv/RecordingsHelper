@@ -1,6 +1,6 @@
 # RecordingsHelper Solution
 
-A complete .NET solution for audio file manipulation and stitching, organized into a reusable class library and demonstration console application.
+A complete .NET solution for audio file manipulation, featuring a reusable class library, console demo application, and modern WPF desktop application.
 
 ## Project Structure
 
@@ -13,15 +13,27 @@ RecordingsHelper/                           # Solution Root
 │   ├── Extensions/
 │   │   └── AudioConverterExtensions.cs    # Format conversion extensions
 │   ├── Services/
-│   │   └── AudioStitcher.cs               # Audio stitching service
+│   │   ├── AudioStitcher.cs               # Audio stitching service
+│   │   └── AudioEditor.cs                 # Audio editing service
+│   ├── Models/
+│   │   └── AudioSegment.cs                # Time segment model
 │   ├── RecordingsHelper.Core.csproj       # Class library project
 │   └── README.md                          # Library documentation
 │
-└── RecordingsHelper/                       # Console Application (Demo)
-    ├── Program.cs                         # Demo application
-    ├── RecordingsHelper.csproj            # Console app project
-    ├── README.md                          # Console app documentation
-    └── EXAMPLES.md                        # Usage scenarios
+├── RecordingsHelper/                       # Console Application (Demo)
+│   ├── Program.cs                         # Demo application
+│   ├── RecordingsHelper.csproj            # Console app project
+│   ├── README.md                          # Console app documentation
+│   └── EXAMPLES.md                        # Usage scenarios
+│
+└── RecordingsHelper.WPF/                   # WPF Desktop Application
+    ├── Models/                            # Data models
+    ├── ViewModels/                        # MVVM ViewModels
+    ├── Views/                             # XAML views
+    ├── Services/                          # Application services
+    ├── Converters/                        # Value converters
+    ├── RecordingsHelper.WPF.csproj        # WPF project
+    └── README.md                          # WPF documentation
 ```
 
 ## Quick Start
@@ -33,11 +45,17 @@ cd d:\Workspace\Dotnet\RecordingsHelper
 dotnet build
 ```
 
-### Run the Demo Application
+### Run the Console Demo
 
 ```bash
 cd RecordingsHelper
 dotnet run
+```
+
+### Run the WPF Application
+
+```bash
+dotnet run --project RecordingsHelper.WPF
 ```
 
 ## Projects
@@ -47,6 +65,7 @@ dotnet run
 A reusable .NET class library for audio processing:
 - Stitch multiple audio files together
 - Convert between audio formats (MP3, WAV, OGG, MP4, AAC, WMA, AIFF)
+- Remove or mute audio segments with millisecond precision
 - Normalize audio levels
 - Add silence between segments
 - Calculate total duration
@@ -68,6 +87,19 @@ A demonstration console application showcasing the RecordingsHelper.Core library
 **Dependencies**: RecordingsHelper.Core (project reference)
 
 See `RecordingsHelper/README.md` for console app details.
+
+### RecordingsHelper.WPF (Desktop Application)
+
+A modern WPF desktop application with Material Design UI:
+- **Merge Audio Files** - Intuitive drag-drop interface for combining audio files
+- **Redact Audio** - Visual timeline editor with millisecond-precision segment selection
+- **Audio Player** - Built-in playback with play/pause/stop controls
+- **Remove vs Mute** - Choose to completely remove segments or replace with silence
+
+**Target Framework**: .NET 9.0-windows  
+**Dependencies**: RecordingsHelper.Core, MaterialDesignThemes, CommunityToolkit.Mvvm, NAudio
+
+See `RecordingsHelper.WPF/README.md` and `WPF_APPLICATION_GUIDE.md` for detailed documentation.
 
 ## Using RecordingsHelper.Core in Your Projects
 
@@ -144,41 +176,55 @@ The solution uses:
 ## Documentation
 
 - **README.md** (this file) - Solution overview
+- **WPF_APPLICATION_GUIDE.md** - Complete WPF application documentation
 - **RecordingsHelper.Core/README.md** - Class library API documentation
 - **RecordingsHelper/README.md** - Console application guide
 - **RecordingsHelper/EXAMPLES.md** - Real-world usage scenarios
 - **RecordingsHelper/EDITING_GUIDE.md** - Comprehensive audio editing guide
+- **RecordingsHelper.WPF/README.md** - WPF application user guide
 
 ## Integration Examples
 
 The class library can be used in:
-- **Console Applications** - Command-line tools
+- **WPF Desktop Applications** ✨ - Rich graphical interfaces (included in solution)
+- **Console Applications** - Command-line tools (included in solution)
 - **ASP.NET Core Web APIs** - Audio processing endpoints
-- **Windows Forms / WPF** - Desktop applications
+- **Windows Forms** - Legacy desktop applications
 - **Blazor** - Web applications
 - **Azure Functions** - Serverless audio processing
 - **Background Services** - Audio processing workers
 
 ## Use Cases
 
-- Podcast production
-- Music playlist creation
-- Voice recording compilation
-- Batch format conversion
-- Lecture recording assembly
-- Sound effect library creation
-- Multi-language audio assembly
-- Training materials creation
-- Emergency broadcast systems
-- Automated audio workflows
+- **Podcast Production** - Combine intro, content, and outro segments
+- **Audio Redaction** - Remove or mute sensitive information
+- **Music Playlist Creation** - Merge multiple tracks
+- **Voice Recording Compilation** - Assemble interview segments
+- **Batch Format Conversion** - Convert multiple files at once
+- **Lecture Recording Assembly** - Combine class sessions
+- **Sound Effect Library Creation** - Build custom audio libraries
+- **Multi-language Audio Assembly** - Combine translations
+- **Training Materials Creation** - Build educational content
+- **Emergency Broadcast Systems** - Automated audio workflows
 
 ## Getting Started
 
+### For End Users (WPF Application)
+1. **Build** the solution: `dotnet build`
+2. **Run** the WPF app: `dotnet run --project RecordingsHelper.WPF`
+3. **Explore** the Merge and Redact features through the UI
+
+### For Developers (Library)
 1. **Clone or navigate** to the solution directory
 2. **Build** the solution: `dotnet build`
-3. **Run** the demo: `cd RecordingsHelper && dotnet run`
+3. **Run** the console demo: `cd RecordingsHelper && dotnet run`
 4. **Explore** the examples in `RecordingsHelper/EXAMPLES.md`
 5. **Reference** the library in your own projects
+
+### For Contributors
+1. **Read** `WPF_APPLICATION_GUIDE.md` for architecture details
+2. **Review** the MVVM pattern implementation
+3. **Test** changes with both console and WPF apps
 
 ## Solution Commands
 

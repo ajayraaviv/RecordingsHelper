@@ -1,0 +1,108 @@
+﻿<Window x:Class="RecordingsHelper.WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RecordingsHelper.WPF"
+        xmlns:vm="clr-namespace:RecordingsHelper.WPF.ViewModels"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:views="clr-namespace:RecordingsHelper.WPF.Views"
+        xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+        mc:Ignorable="d"
+        Title="Audio Recordings Helper" 
+        Height="700" Width="1000"
+        Background="{DynamicResource MaterialDesignPaper}"
+        FontFamily="{DynamicResource MaterialDesignFont}"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="Auto">
+    
+    <Window.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Home Page -->
+        <Grid x:Name="HomePage" Visibility="{Binding CurrentView, Converter={StaticResource NullToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+                <TextBlock Text="Audio Recordings Helper" Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"/>
+            </materialDesign:ColorZone>
+
+            <!-- Menu Cards -->
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="500">
+                <TextBlock Text="Select an Operation" 
+                           Style="{StaticResource MaterialDesignHeadline4TextBlock}" 
+                           HorizontalAlignment="Center" 
+                           Margin="0,0,0,40"/>
+
+                <!-- Merge Card -->
+                <materialDesign:Card Margin="0,0,0,20" UniformCornerRadius="10">
+                    <Button Command="{Binding NavigateToMergeCommand}" 
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Height="120"
+                            HorizontalContentAlignment="Left">
+                        <StackPanel Margin="20">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="MusicNotePlus" Width="32" Height="32" 
+                                                         VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                <TextBlock Text="Merge Audio Files" 
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="Combine multiple audio files into a single file. Drag and drop to reorder files before merging." 
+                                       Margin="48,8,0,0" 
+                                       TextWrapping="Wrap" 
+                                       Opacity="0.7"/>
+                        </StackPanel>
+                    </Button>
+                </materialDesign:Card>
+
+                <!-- Redact Card -->
+                <materialDesign:Card UniformCornerRadius="10">
+                    <Button Command="{Binding NavigateToRedactCommand}" 
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Height="120"
+                            HorizontalContentAlignment="Left">
+                        <StackPanel Margin="20">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentCut" Width="32" Height="32" 
+                                                         VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                <TextBlock Text="Redact Audio Segments" 
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="Remove or mute specific segments from an audio file. Select time ranges with millisecond precision." 
+                                       Margin="48,8,0,0" 
+                                       TextWrapping="Wrap" 
+                                       Opacity="0.7"/>
+                        </StackPanel>
+                    </Button>
+                </materialDesign:Card>
+            </StackPanel>
+        </Grid>
+
+        <!-- Content Area for Views -->
+        <Grid x:Name="ContentArea">
+            <ContentControl Content="{Binding CurrentView}">
+                <ContentControl.Resources>
+                    <DataTemplate DataType="{x:Type vm:MergeViewModel}">
+                        <views:MergeView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:RedactViewModel}">
+                        <views:RedactView/>
+                    </DataTemplate>
+                </ContentControl.Resources>
+            </ContentControl>
+        </Grid>
+    </Grid>
+</Window>
