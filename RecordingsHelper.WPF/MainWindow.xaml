@@ -22,11 +22,13 @@
     <Window.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
+        <converters:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter"/>
     </Window.Resources>
 
     <Grid>
         <!-- Home Page -->
-        <Grid x:Name="HomePage" Visibility="{Binding CurrentView, Converter={StaticResource NullToVisibilityConverter}}">
+        <Grid x:Name="HomePage" Visibility="{Binding CurrentView, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -39,59 +41,101 @@
             </materialDesign:ColorZone>
 
             <!-- Menu Cards -->
-            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Width="500">
-                <TextBlock Text="Select an Operation" 
-                           Style="{StaticResource MaterialDesignHeadline4TextBlock}" 
-                           HorizontalAlignment="Center" 
-                           Margin="0,0,0,40"/>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="1200" Margin="32">
+                    <TextBlock Text="Select an Operation" 
+                               Style="{StaticResource MaterialDesignHeadline4TextBlock}" 
+                               HorizontalAlignment="Center" 
+                               Margin="0,0,0,40"/>
+                    
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                <!-- Merge Card -->
-                <materialDesign:Card Margin="0,0,0,20" UniformCornerRadius="10">
-                    <Button Command="{Binding NavigateToMergeCommand}" 
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Height="120"
-                            HorizontalContentAlignment="Left">
-                        <StackPanel Margin="20">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="MusicNotePlus" Width="32" Height="32" 
-                                                         VerticalAlignment="Center" Margin="0,0,16,0"/>
-                                <TextBlock Text="Merge Audio Files" 
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBlock Text="Combine multiple audio files into a single file. Drag and drop to reorder files before merging." 
-                                       Margin="48,8,0,0" 
-                                       TextWrapping="Wrap" 
-                                       Opacity="0.7"/>
-                        </StackPanel>
-                    </Button>
-                </materialDesign:Card>
+                        <!-- Merge Card -->
+                        <materialDesign:Card Grid.Row="0" Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToMergeCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Combine multiple audio files into a single file. Drag and drop to reorder files before merging. Supports various audio formats.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="MusicNotePlus" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Merge Audio Files" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Combine multiple audio files into one" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
 
-                <!-- Redact Card -->
-                <materialDesign:Card UniformCornerRadius="10">
-                    <Button Command="{Binding NavigateToRedactCommand}" 
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Height="120"
-                            HorizontalContentAlignment="Left">
-                        <StackPanel Margin="20">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="ContentCut" Width="32" Height="32" 
-                                                         VerticalAlignment="Center" Margin="0,0,16,0"/>
-                                <TextBlock Text="Redact Audio Segments" 
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
-                                           VerticalAlignment="Center"/>
+                        <!-- Redact Card -->
+                        <materialDesign:Card Grid.Row="0" Grid.Column="1" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToRedactCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Remove or mute specific segments from an audio file. Select time ranges with millisecond precision. Choose to delete segments entirely or mute them.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="ContentCut" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Redact Audio Segments" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Remove or mute specific segments" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+
+                        <!-- Split Card -->
+                        <materialDesign:Card Grid.Row="0" Grid.Column="2" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToSplitCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Split an audio file into multiple parts at specified time points. Add as many split points as needed. Each part is saved as a separate file.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="CallSplit" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Split Audio File" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Split audio into multiple parts" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+
+                        <!-- Advanced Redact Card -->
+                        <materialDesign:Card Grid.Row="1" Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToAdvancedRedactCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Load transcript insights JSON and select segments to redact based on speaker, text content, or time range. Multi-select with individual mute/remove actions per segment.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="FileDocumentEdit" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Advanced Redaction" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="Redact using transcript insights" 
+                                           TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
                             </StackPanel>
-                            <TextBlock Text="Remove or mute specific segments from an audio file. Select time ranges with millisecond precision." 
-                                       Margin="48,8,0,0" 
-                                       TextWrapping="Wrap" 
-                                       Opacity="0.7"/>
-                        </StackPanel>
-                    </Button>
-                </materialDesign:Card>
+                        </Button>
+                    </materialDesign:Card>
+                </Grid>
             </StackPanel>
-        </Grid>
+        </ScrollViewer>
+    </Grid>
 
-        <!-- Content Area for Views -->
+    <!-- Content Area for Views -->
         <Grid x:Name="ContentArea">
             <ContentControl Content="{Binding CurrentView}">
                 <ContentControl.Resources>
@@ -100,6 +144,12 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:RedactViewModel}">
                         <views:RedactView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:SplitViewModel}">
+                        <views:SplitView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:AdvancedRedactViewModel}">
+                        <views:AdvancedRedactView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

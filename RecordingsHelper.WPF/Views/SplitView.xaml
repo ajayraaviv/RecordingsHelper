@@ -1,0 +1,379 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.SplitView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RecordingsHelper.WPF.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </UserControl.InputBindings>
+    
+    <UserControl.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                <TextBlock Text="Split Audio File" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Main Content with ScrollViewer -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+            <!-- File Selection -->
+            <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding LoadFileCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FolderOpen" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Load Audio File"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                        
+                        <Button Command="{Binding UnloadFileCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                IsEnabled="{Binding IsFileLoaded}"
+                                ToolTip="Clear the loaded file and reset">
+                            <Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Close" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Clear File"/>
+                                </StackPanel>
+                            </Button.Content>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Margin="0,16,0,0">
+                        <TextBlock Text="{Binding LoadedFileName}" 
+                                   FontWeight="Medium" 
+                                   FontSize="16"/>
+                        <TextBlock Opacity="0.7">
+                            <Run Text="Duration: "/>
+                            <Run Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Audio Player -->
+            <materialDesign:Card Grid.Row="1" 
+                                 Padding="16" 
+                                 Margin="0,0,0,16"
+                                 Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Audio Player" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Timeline -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" 
+                                   Text="{Binding CurrentPosition, Converter={StaticResource TimeSpanToStringConverter}}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0"
+                                   FontFamily="Consolas"/>
+
+                        <Slider Grid.Column="1" 
+                                Minimum="0" 
+                                Maximum="{Binding TotalDuration.TotalMilliseconds}"
+                                Value="{Binding SliderPosition, Mode=TwoWay}"
+                                Style="{StaticResource MaterialDesignDiscreteSlider}"
+                                TickFrequency="1000"/>
+
+                        <TextBlock Grid.Column="2" 
+                                   Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   FontFamily="Consolas"/>
+                    </Grid>
+
+                    <!-- Playback Controls -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                Command="{Binding PlayCommand}"
+                                IsEnabled="{Binding IsPlaying, Converter={StaticResource InverseBooleanConverter}}"
+                                ToolTip="Play"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Play" Width="32" Height="32"/>
+                        </Button>
+
+                        <Button Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                Command="{Binding PauseCommand}"
+                                IsEnabled="{Binding IsPlaying}"
+                                ToolTip="Pause"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Pause" Width="32" Height="32"/>
+                        </Button>
+
+                        <Button Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                Command="{Binding StopCommand}"
+                                ToolTip="Stop"
+                                Margin="4">
+                            <materialDesign:PackIcon Kind="Stop" Width="32" Height="32"/>
+                        </Button>
+                    </StackPanel>
+
+                    <Separator Margin="0,16,0,16"/>
+
+                    <!-- Split Point Controls -->
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                            <TextBlock Text="Split Point Time" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewSplitPointText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     FontFamily="Consolas"
+                                     materialDesign:HintAssist.Hint="Type: 90.5 or 1:30 or 1:30:00.500"
+                                     GotFocus="TimeTextBox_GotFocus">
+                                <TextBox.ToolTip>
+                                    <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                        <Run FontWeight="Bold" Text="Easy input formats:"/>
+                                        <LineBreak/><LineBreak/>
+                                        <Run FontWeight="Bold" Text="Seconds:"/> 30, 45.5, 90
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Minutes:"/> 1:30, 2:15.5
+                                        <LineBreak/>
+                                        <Run FontWeight="Bold" Text="Hours:"/> 1:30:00, 1:30:45.250
+                                        <LineBreak/><LineBreak/>
+                                        Just type naturally - formatting happens automatically!
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </TextBox>
+                        </StackPanel>
+
+                        <Button Grid.Row="0" Grid.Column="1" 
+                                Content="Add at Current" 
+                                Command="{Binding AddSplitPointAtCurrentCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                VerticalAlignment="Bottom"
+                                Margin="0,0,0,8"
+                                ToolTip="Add split point at current playback position"/>
+
+                        <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                Command="{Binding AddSplitPointManualCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                HorizontalAlignment="Stretch"
+                                Margin="0,8">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Plus" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Add Split Point"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Split Points List -->
+            <Grid Grid.Row="2" Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Split Points -->
+                <materialDesign:Card Grid.Column="0" Padding="16">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                            <Button DockPanel.Dock="Right" 
+                                    Command="{Binding ClearSplitPointsCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}">
+                                <Button.Content>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="DeleteSweep" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Clear All"/>
+                                    </StackPanel>
+                                </Button.Content>
+                            </Button>
+                            <TextBlock Text="Split Points" 
+                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SplitPoints}">
+                                <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource MaterialDesignDivider}" 
+                                            BorderThickness="0,0,0,1" 
+                                            Padding="8"
+                                            Margin="0,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <materialDesign:PackIcon Grid.Column="0" 
+                                                                     Kind="ContentCut" 
+                                                                     Width="24" Height="24"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,12,0"/>
+
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="Consolas"
+                                                       FontWeight="Medium"
+                                                       FontSize="16">
+                                                <Run Text="Split at: "/>
+                                                <Run Text="{Binding Converter={StaticResource TimeSpanToStringConverter}, Mode=OneWay}"/>
+                                            </TextBlock>
+
+                                            <Button Grid.Column="2" 
+                                                    Style="{StaticResource MaterialDesignIconButton}"
+                                                    Command="{Binding DataContext.RemoveSplitPointCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Remove">
+                                                <materialDesign:PackIcon Kind="Close"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Center" Background="Transparent"/>
+
+                <!-- Settings -->
+                <materialDesign:Card Grid.Column="2" Padding="16" Background="{DynamicResource MaterialDesignPaper}">
+                    <StackPanel>
+                        <TextBlock Text="Output Settings" 
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="0,0,0,16"
+                                   Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        
+                        <TextBlock Text="File Name Pattern"
+                                   Margin="0,0,0,8"/>
+                        <TextBox Text="{Binding OutputPattern, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,0,0,8">
+                            <TextBox.ToolTip>
+                                <TextBlock MaxWidth="250" TextWrapping="Wrap">
+                                    Use {0} for part number.
+                                    <LineBreak/>Examples:
+                                    <LineBreak/>• part_{0}.wav
+                                    <LineBreak/>• segment_{0}.wav
+                                    <LineBreak/>• output_part{0}.wav
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </TextBox>
+
+                        <Border Background="{DynamicResource MaterialDesignDivider}"
+                                Height="1"
+                                Margin="0,16"/>
+
+                        <TextBlock Text="Preview" 
+                                   FontWeight="Bold"
+                                   Margin="0,16,0,8"/>
+                        <StackPanel>
+                            <TextBlock Opacity="0.7">
+                                <Run Text="Split Points: "/>
+                                <Run Text="{Binding SplitPoints.Count, Mode=OneWay}" FontWeight="Bold"/>
+                            </TextBlock>
+                            <TextBlock Opacity="0.7" Margin="0,4,0,0">
+                                <Run Text="Output Files: "/>
+                                <Run Text="{Binding SplitPoints.Count, Mode=OneWay}" FontWeight="Bold"/>
+                                <Run Text=" + 1 parts"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </materialDesign:Card>
+            </Grid>
+        </Grid>
+        </ScrollViewer>
+
+        <!-- Bottom Action Bar -->
+        <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,16,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Home" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Home"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+                
+                <Button DockPanel.Dock="Right" 
+                        Command="{Binding ProcessSplitCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                        Height="40"
+                        Padding="32,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentCut" 
+                                                     VerticalAlignment="Center" 
+                                                     Margin="0,0,8,0"/>
+                            <TextBlock Text="Split Audio File" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button.Content>
+                </Button>
+
+                <TextBlock Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center"
+                           FontStyle="Italic"
+                           Opacity="0.8"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+    </Grid>
+</UserControl>

@@ -57,6 +57,62 @@ dotnet run --project RecordingsHelper.WPF
 - Time format is mm:ss.fff (minutes:seconds.milliseconds). Example: 01:23.500 = 1 minute, 23.5 seconds
 - Click **"Clear File"** to unload the current file and start fresh with a new one
 
+### Splitting Audio
+
+1. **Launch** the application
+2. **Click** "Split Audio File" on the home screen
+3. **Click** "Load Audio File"
+4. **Select** an audio file to split
+5. **Use the player** to find split points:
+   - ▶ Play button to start playback
+   - ⏸ Pause button to pause
+   - ⏹ Stop button to stop and reset
+   - Drag the slider to seek
+6. **For each split point**:
+   - Play to the desired split position
+   - Click **"Add at Current"** to add a split point at the playback position
+   - **OR** manually type the time and click **"Add Split Point"**
+7. **Review** your split points in the list
+8. **Customize** the output file name pattern (e.g., `part_{0}.wav`)
+9. **Click** "Split Audio File"
+10. **Select** an output folder
+11. **Wait** for processing to complete
+12. **Done!** Your split files are ready in the selected folder
+
+**Tips**: 
+- You can add as many split points as needed
+- Split points are automatically sorted in chronological order
+- The number of output files = number of split points + 1
+- Example: 2 split points = 3 output files
+
+### Advanced Redaction (Transcript-based)
+
+1. **Launch** the application
+2. **Click** "Advanced Redaction (Transcript)" on the home screen
+3. **Click** "Load Audio" to select your audio file
+4. **Click** "Load Insights" to select your transcript JSON file
+   - Supports Azure Video Indexer JSON format
+   - The JSON file should contain transcript data with timestamps
+5. **Review** the loaded transcript segments
+   - Each segment shows: ID, Speaker, Time Range, Text, and Confidence
+6. **Select segments** to redact using checkboxes
+   - Use **"Select All"** to select all segments at once
+   - Use **"Deselect All"** to clear all selections
+7. **For each selected segment**, choose the action:
+   - **Mute**: Replaces audio with silence (preserves timing)
+   - **Remove**: Completely removes the audio segment
+8. **Click** "Process Redactions"
+9. **Choose** where to save the output file
+10. **Wait** for processing to complete
+11. **Done!** Your redacted file is ready
+
+**Tips**: 
+- Each transcript segment can have multiple time instances
+- All instances of a selected segment will be processed
+- Mix and match Mute/Remove actions for different segments
+- Speaker ID and confidence score help identify segments
+- Use "Clear All Files" to start over with new files
+
 ## Common Tasks
 
 ### Merge 3 Audio Files
@@ -78,6 +134,30 @@ Add Segment 1 (e.g., 00:30-00:45) →
 Add Segment 2 (e.g., 01:20-01:35) → 
 Mute Segments → Process File
 ```
+
+### Split Audio into 3 Parts
+```
+Home → Split Audio File → Load File →
+Add split point at 01:30 →
+Add split point at 03:00 →
+Split Audio File → Select output folder
+```
+
+### Advanced Redaction (Transcript-based)
+```
+Home → Advanced Redaction (Transcript) → 
+Load Audio File → Load Insights JSON →
+Select transcript segments (multi-select with checkboxes) →
+Choose Mute or Remove for each segment →
+Process Redactions → Save output file
+```
+
+**About Transcript Insights**: 
+- Supports Azure Video Indexer JSON format
+- Each transcript segment shows speaker ID, time range, and confidence
+- Multi-select enabled for bulk operations
+- Individual Mute/Remove choice per segment
+- Automatically processes all instances of selected transcript segments
 
 ## Keyboard Tips
 

@@ -57,8 +57,25 @@ public class AudioEditor
         
         foreach (var keepSegment in segmentsToKeep)
         {
-            reader.Position = TimeToPosition(keepSegment.Start, format);
+            var startPosition = TimeToPosition(keepSegment.Start, format);
             var bytesToRead = (int)TimeToBytes(keepSegment.Duration, format);
+
+            // Ensure we don't read beyond file length
+            var maxPosition = reader.Length;
+            if (startPosition >= maxPosition)
+                continue;
+
+            reader.Position = startPosition;
+
+            // Adjust bytes to read if we would exceed file length
+            var remainingBytes = maxPosition - startPosition;
+            bytesToRead = (int)Math.Min(bytesToRead, remainingBytes);
+
+            // Ensure bytesToRead is a multiple of BlockAlign
+            bytesToRead = (bytesToRead / format.BlockAlign) * format.BlockAlign;
+            if (bytesToRead <= 0)
+                continue;
+
             var buffer = new byte[format.AverageBytesPerSecond]; // 1 second buffer
             var totalBytesRead = 0;
 
@@ -66,9 +83,14 @@ public class AudioEditor
             {
                 var bytesToReadNow = Math.Min(buffer.Length, bytesToRead - totalBytesRead);
                 var bytesRead = reader.Read(buffer, 0, bytesToReadNow);
-                
+
                 if (bytesRead == 0)
-                    break;
+                {
+                    // Unexpected end of stream
+                    throw new InvalidOperationException(
+                        $"Unexpected end of stream at position {reader.Position}. " +
+                        $"Expected to read {bytesToRead} bytes but only read {totalBytesRead}");
+                }
 
                 writer.Write(buffer, 0, bytesRead);
                 totalBytesRead += bytesRead;
@@ -273,13 +295,124 @@ public class AudioEditor
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
-        return extension switch
+        WaveStream sourceStream = extension switch
         {
             ".mp3" => new Mp3FileReader(filePath),
             ".wav" => new WaveFileReader(filePath),
             ".aiff" or ".aif" => new AiffFileReader(filePath),
             _ => new MediaFoundationReader(filePath)
         };
+
+        // For MediaFoundationReader (MP4, M4A, etc.), convert to a wave stream
+        // that supports better seeking by reading into memory
+        if (sourceStream is MediaFoundationReader mfReader)
+        {
+            // Read the entire audio into a memory stream for reliable seeking
+            var memoryStream = new MemoryStream();
+            var waveWriter = new WaveFileWriter(memoryStream, mfReader.WaveFormat);
+            
+            var buffer = new byte[mfReader.WaveFormat.AverageBytesPerSecond * 4]; // 4 second buffer
+            int bytesRead;
+            while ((bytesRead = mfReader.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                waveWriter.Write(buffer, 0, bytesRead);
+            }
+            
+            waveWriter.Flush();
+            // Don't dispose waveWriter, just dispose the source reader
+            mfReader.Dispose();
+            
+            memoryStream.Position = 0;
+            return new WaveFileReader(memoryStream);
+        }
+
+        return sourceStream;
+    }
+
+    /// <summary>
+    /// Splits an audio file at specified split points into multiple output files
+    /// </summary>
+    /// <param name="inputFile">Path to the input audio file</param>
+    /// <param name="outputDirectory">Directory where split files will be saved</param>
+    /// <param name="outputFileNamePattern">Pattern for output filenames (e.g., "part_{0}.wav" where {0} is the part number)</param>
+    /// <param name="splitPoints">List of TimeSpan values indicating where to split (must be sorted)</param>
+    /// <returns>List of paths to the created split files</returns>
+    public List<string> SplitAudioFile(string inputFile, string outputDirectory, string outputFileNamePattern, List<TimeSpan> splitPoints)
+    {
+        if (!File.Exists(inputFile))
+            throw new FileNotFoundException($"Input file not found: {inputFile}");
+
+        if (string.IsNullOrWhiteSpace(outputDirectory))
+            throw new ArgumentException("Output directory must be specified", nameof(outputDirectory));
+
+        if (!Directory.Exists(outputDirectory))
+            Directory.CreateDirectory(outputDirectory);
+
+        if (splitPoints == null || splitPoints.Count == 0)
+            throw new ArgumentException("At least one split point must be specified", nameof(splitPoints));
+
+        // Validate and sort split points
+        var sortedSplitPoints = splitPoints.Distinct().OrderBy(t => t).ToList();
+        
+        using var reader = OpenAudioFile(inputFile);
+        var format = reader.WaveFormat;
+        var totalDuration = reader.TotalTime;
+
+        // Validate all split points are within file duration
+        foreach (var splitPoint in sortedSplitPoints)
+        {
+            if (splitPoint <= TimeSpan.Zero)
+                throw new ArgumentException($"Split point must be greater than zero: {splitPoint}");
+            
+            if (splitPoint >= totalDuration)
+                throw new ArgumentException($"Split point {splitPoint} exceeds file duration {totalDuration}");
+        }
+
+        // Build segments based on split points
+        var segments = new List<AudioSegment>();
+        var previousPoint = TimeSpan.Zero;
+
+        foreach (var splitPoint in sortedSplitPoints)
+        {
+            segments.Add(AudioSegment.FromDuration(previousPoint, splitPoint - previousPoint));
+            previousPoint = splitPoint;
+        }
+
+        // Add final segment from last split point to end
+        segments.Add(AudioSegment.FromDuration(previousPoint, totalDuration - previousPoint));
+
+        // Create output files
+        var outputFiles = new List<string>();
+        var buffer = new byte[format.AverageBytesPerSecond]; // 1 second buffer
+
+        for (int i = 0; i < segments.Count; i++)
+        {
+            var segment = segments[i];
+            var outputFileName = string.Format(outputFileNamePattern, i + 1);
+            var outputFilePath = Path.Combine(outputDirectory, outputFileName);
+
+            using var writer = new WaveFileWriter(outputFilePath, format);
+            
+            reader.Position = TimeToPosition(segment.Start, format);
+            var bytesToRead = (int)TimeToBytes(segment.Duration, format);
+            var totalBytesRead = 0;
+
+            while (totalBytesRead < bytesToRead)
+            {
+                var bytesToReadNow = Math.Min(buffer.Length, bytesToRead - totalBytesRead);
+                var bytesRead = reader.Read(buffer, 0, bytesToReadNow);
+                
+                if (bytesRead == 0)
+                    break;
+
+                writer.Write(buffer, 0, bytesRead);
+                totalBytesRead += bytesRead;
+            }
+
+            outputFiles.Add(outputFilePath);
+        }
+
+        return outputFiles;
     }
 
     /// <summary>

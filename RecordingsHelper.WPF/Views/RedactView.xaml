@@ -37,6 +37,29 @@
                         Foreground="White">
                     <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
                 </Button>
+                
+                <!-- Toggle Button for Mute/Remove -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0">
+                    <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Medium"/>
+                    <ToggleButton IsChecked="{Binding MuteSegments}" 
+                                  Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  ToolTip="Toggle between Remove and Mute mode"/>
+                    <TextBlock VerticalAlignment="Center" FontWeight="Medium">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Remove"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding MuteSegments}" Value="True">
+                                        <Setter Property="Text" Value="Mute"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+                
                 <TextBlock Text="Redact Audio Segments" 
                            Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
                            VerticalAlignment="Center"
@@ -246,24 +269,116 @@
                                 <TextBlock Text="Add Redaction Segment"/>
                             </StackPanel>
                         </Button>
+                        
+                        <!-- Action Mode Selection -->
+                        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
+                                Background="{DynamicResource MaterialDesignChipBackground}"
+                                Padding="12"
+                                CornerRadius="4"
+                                Margin="0,16,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Global Action Toggle -->
+                                <TextBlock Grid.Row="0" Grid.Column="0" 
+                                           Text="Global Action:" 
+                                           FontWeight="Medium"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,0"/>
+                                
+                                <StackPanel Grid.Row="0" Grid.Column="1" 
+                                           Orientation="Horizontal"
+                                           Margin="0,0,0,12">
+                                    <TextBlock Text="Remove" 
+                                               VerticalAlignment="Center" 
+                                               Margin="0,0,8,0"
+                                               FontWeight="Medium"/>
+                                    <ToggleButton IsChecked="{Binding MuteSegments}" 
+                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,8,0"
+                                                  ToolTip="Toggle between Remove and Mute for all segments using global setting"/>
+                                    <TextBlock Text="Mute" 
+                                               VerticalAlignment="Center"
+                                               FontWeight="Medium"/>
+                                </StackPanel>
+                                
+                                <!-- Apply Mode -->
+                                <TextBlock Grid.Row="1" Grid.Column="0" 
+                                           Text="Apply Mode:" 
+                                           FontWeight="Medium"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,0"/>
+                                
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                    <RadioButton Content="Apply to All" 
+                                                 IsChecked="{Binding ApplyToAll}"
+                                                 Margin="0,0,24,0"
+                                                 VerticalAlignment="Center"
+                                                 GroupName="ApplyMode">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock Text="All segments use the global mute/remove setting from above"
+                                                       TextWrapping="Wrap"
+                                                       MaxWidth="250"/>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+
+                                    <RadioButton Content="Per Segment" 
+                                                 IsChecked="{Binding ApplyToAll, Converter={StaticResource InverseBooleanConverter}}"
+                                                 VerticalAlignment="Center"
+                                                 GroupName="ApplyMode">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock Text="Customize mute/remove for each segment individually. Checkboxes will be unchecked to allow customization."
+                                                       TextWrapping="Wrap"
+                                                       MaxWidth="250"/>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </StackPanel>
             </materialDesign:Card>
 
             <!-- Segments List -->
-            <Grid Grid.Row="2" Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Segments List -->
-                <materialDesign:Card Grid.Column="0" Padding="16">
-                    <DockPanel>
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
-                            <Button DockPanel.Dock="Right" 
-                                    Command="{Binding ClearSegmentsCommand}"
+            <materialDesign:Card Grid.Row="2" 
+                                 Padding="16" 
+                                 Margin="0,0,0,16"
+                                 Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <!-- Statistics -->
+                            <Border Background="{DynamicResource MaterialDesignChipBackground}"
+                                    Padding="8,4"
+                                    CornerRadius="12"
+                                    Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Delete" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Remove:" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{Binding RemoveCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <Border Background="{DynamicResource MaterialDesignChipBackground}"
+                                    Padding="8,4"
+                                    CornerRadius="12"
+                                    Margin="0,0,16,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="VolumeOff" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Mute:" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="{Binding MuteCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            
+                            <Button Command="{Binding ClearSegmentsCommand}"
                                     Style="{StaticResource MaterialDesignOutlinedButton}">
                                 <Button.Content>
                                     <StackPanel Orientation="Horizontal">
@@ -272,12 +387,14 @@
                                     </StackPanel>
                                 </Button.Content>
                             </Button>
-                            <TextBlock Text="Redaction Segments" 
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                       VerticalAlignment="Center"/>
-                        </DockPanel>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Redaction Segments" 
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   VerticalAlignment="Center"/>
+                    </DockPanel>
 
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
                             <ItemsControl ItemsSource="{Binding RedactionSegments}">
                                 <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -287,18 +404,13 @@
                                             Margin="0,4">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <materialDesign:PackIcon Grid.Column="0" 
-                                                                     Kind="ContentCut" 
-                                                                     Width="24" Height="24"
-                                                                     VerticalAlignment="Center"
-                                                                     Margin="0,0,12,0"/>
-
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding StartTimeFormatted}" 
                                                                FontFamily="Consolas"
@@ -314,7 +426,59 @@
                                                 </TextBlock>
                                             </StackPanel>
 
-                                            <Button Grid.Column="2" 
+                                            <StackPanel Grid.Column="1" 
+                                                       Orientation="Horizontal"
+                                                       VerticalAlignment="Center"
+                                                       Margin="8,0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.ApplyToAll, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                
+                                                <TextBlock Text="Remove" 
+                                                           FontSize="11" 
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"
+                                                           Opacity="0.7"/>
+                                                
+                                                <ToggleButton IsChecked="{Binding MuteSegment}"
+                                                              Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                              VerticalAlignment="Center"
+                                                              ToolTip="Toggle between Remove and Mute for this segment"/>
+                                                
+                                                <TextBlock Text="Mute" 
+                                                           FontSize="11" 
+                                                           VerticalAlignment="Center"
+                                                           Margin="8,0,0,0"
+                                                           Opacity="0.7"/>
+                                            </StackPanel>
+                                            
+                                            <TextBlock Grid.Column="2" 
+                                                       VerticalAlignment="Center"
+                                                       FontSize="11"
+                                                       FontWeight="Medium"
+                                                       Margin="8,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Setter Property="Text" Value="(using global)"/>
+                                                        <Setter Property="Opacity" Value="0.5"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.ApplyToAll, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <Button Grid.Column="3" 
                                                     Style="{StaticResource MaterialDesignIconButton}"
                                                     Command="{Binding DataContext.RemoveSegmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
@@ -326,64 +490,9 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
-                </materialDesign:Card>
-
-                <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Center" Background="Transparent"/>
-
-                <!-- Settings -->
-                <materialDesign:Card Grid.Column="2" Padding="16" Background="{DynamicResource MaterialDesignPaper}">
-                    <StackPanel>
-                        <TextBlock Text="Processing Mode" 
-                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                   Margin="0,0,0,8"
-                                   Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                        
-                        <TextBlock Text="Choose how to handle selected segments:"
-                                   Opacity="0.7"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,16"/>
-
-                        <RadioButton Content="Remove Segments" 
-                                     IsChecked="{Binding MuteSegments, Converter={StaticResource InverseBooleanConverter}}"
-                                     Margin="0,0,0,16"
-                                     FontSize="14"
-                                     GroupName="ProcessingMode">
-                            <RadioButton.ToolTip>
-                                <TextBlock Text="Completely remove the selected segments from the audio file. This will shorten the total duration."
-                                           TextWrapping="Wrap"
-                                           MaxWidth="200"/>
-                            </RadioButton.ToolTip>
-                        </RadioButton>
-
-                        <RadioButton Content="Mute Segments" 
-                                     IsChecked="{Binding MuteSegments}"
-                                     Margin="0,0,0,24"
-                                     FontSize="14"
-                                     GroupName="ProcessingMode">
-                            <RadioButton.ToolTip>
-                                <TextBlock Text="Replace the selected segments with silence. This preserves the total duration and timing."
-                                           TextWrapping="Wrap"
-                                           MaxWidth="200"/>
-                            </RadioButton.ToolTip>
-                        </RadioButton>
-
-                        <Border Background="{DynamicResource MaterialDesignDivider}" 
-                                Padding="12" 
-                                CornerRadius="4"
-                                Margin="0,16,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Total Segments:" FontWeight="Medium"/>
-                                <TextBlock Text="{Binding RedactionSegments.Count}" 
-                                           FontSize="24" 
-                                           FontWeight="Bold"
-                                           Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </materialDesign:Card>
-            </Grid>
+                    </ScrollViewer>
+                </DockPanel>
+            </materialDesign:Card>
         </Grid>
         </ScrollViewer>
 

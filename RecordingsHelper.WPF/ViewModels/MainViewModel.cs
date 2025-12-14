@@ -10,11 +10,15 @@ public partial class MainViewModel : ObservableObject
 
     public MergeViewModel MergeViewModel { get; }
     public RedactViewModel RedactViewModel { get; }
+    public SplitViewModel SplitViewModel { get; }
+    public AdvancedRedactViewModel AdvancedRedactViewModel { get; }
 
     public MainViewModel()
     {
         MergeViewModel = new MergeViewModel();
         RedactViewModel = new RedactViewModel();
+        SplitViewModel = new SplitViewModel();
+        AdvancedRedactViewModel = new AdvancedRedactViewModel();
         CurrentView = null; // Home page by default
     }
 
@@ -28,6 +32,18 @@ public partial class MainViewModel : ObservableObject
     private void NavigateToRedact()
     {
         CurrentView = RedactViewModel;
+    }
+
+    [RelayCommand]
+    private void NavigateToSplit()
+    {
+        CurrentView = SplitViewModel;
+    }
+
+    [RelayCommand]
+    private void NavigateToAdvancedRedact()
+    {
+        CurrentView = AdvancedRedactViewModel;
     }
 
     [RelayCommand]

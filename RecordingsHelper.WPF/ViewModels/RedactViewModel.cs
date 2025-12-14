@@ -129,6 +129,59 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _muteSegments = false; // false = remove, true = mute
+    
+    [ObservableProperty]
+    private bool _applyToAll = true;
+    
+    partial void OnApplyToAllChanged(bool value)
+    {
+        if (value)
+        {
+            // When switching to "Apply to All", set all segments to use global action
+            foreach (var segment in RedactionSegments)
+            {
+                segment.UseGlobalAction = true;
+            }
+        }
+        else
+        {
+            // When switching to "Per Segment", uncheck all segments so they can be customized
+            foreach (var segment in RedactionSegments)
+            {
+                segment.UseGlobalAction = false;
+            }
+        }
+    }
+    
+    partial void OnMuteSegmentsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RemoveCount));
+        OnPropertyChanged(nameof(MuteCount));
+    }
+    
+    public int RemoveCount
+    {
+        get
+        {
+            if (ApplyToAll)
+                return MuteSegments ? 0 : RedactionSegments.Count;
+            
+            // In Per Segment mode, count segments where MuteSegment is false
+            return RedactionSegments.Count(s => !s.MuteSegment);
+        }
+    }
+    
+    public int MuteCount
+    {
+        get
+        {
+            if (ApplyToAll)
+                return MuteSegments ? RedactionSegments.Count : 0;
+            
+            // In Per Segment mode, count segments where MuteSegment is true
+            return RedactionSegments.Count(s => s.MuteSegment);
+        }
+    }
 
     public RedactViewModel()
     {
@@ -279,13 +332,46 @@ public partial class RedactViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // Check for overlaps with existing segments
+        foreach (var existing in RedactionSegments)
+        {
+            // Check if new segment overlaps with existing segment
+            if ((start >= existing.StartTime && start < existing.EndTime) ||  // New start is within existing
+                (end > existing.StartTime && end <= existing.EndTime) ||      // New end is within existing
+                (start <= existing.StartTime && end >= existing.EndTime))     // New segment contains existing
+            {
+                var result = MessageBox.Show(
+                    $"This segment overlaps with an existing segment ({existing.StartTimeFormatted} - {existing.EndTimeFormatted}).\n\nDo you want to add it anyway?",
+                    "Overlap Detected",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                
+                if (result != MessageBoxResult.Yes)
+                    return;
+                
+                break; // Only show warning once
+            }
+        }
+
         var segment = new RedactionSegment
         {
             StartTime = start,
             EndTime = end
         };
+        
+        // Subscribe to property changes on the new segment
+        segment.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(RedactionSegment.MuteSegment))
+            {
+                OnPropertyChanged(nameof(RemoveCount));
+                OnPropertyChanged(nameof(MuteCount));
+            }
+        };
 
         RedactionSegments.Add(segment);
+        OnPropertyChanged(nameof(RemoveCount));
+        OnPropertyChanged(nameof(MuteCount));
         StatusMessage = $"Added segment: {segment.StartTimeFormatted} - {segment.EndTimeFormatted}";
 
         // Reset inputs
@@ -299,6 +385,8 @@ public partial class RedactViewModel : ObservableObject, IDisposable
     private void RemoveSegment(RedactionSegment segment)
     {
         RedactionSegments.Remove(segment);
+        OnPropertyChanged(nameof(RemoveCount));
+        OnPropertyChanged(nameof(MuteCount));
         StatusMessage = $"Removed segment: {segment.StartTimeFormatted} - {segment.EndTimeFormatted}";
     }
 
@@ -341,23 +429,54 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         }
 
         IsProcessing = true;
-        StatusMessage = MuteSegments ? "Muting segments..." : "Removing segments...";
+        StatusMessage = "Processing file...";
 
         try
         {
+            // Separate segments into mute and remove lists based on per-segment or global setting
+            var segmentsToMute = new List<AudioSegment>();
+            var segmentsToRemove = new List<AudioSegment>();
+            
+            foreach (var segment in RedactionSegments.OrderBy(s => s.StartTime))
+            {
+                bool shouldMute = segment.UseGlobalAction ? MuteSegments : segment.MuteSegment;
+                var audioSegment = AudioSegment.FromDuration(segment.StartTime, segment.Duration);
+                
+                if (shouldMute)
+                    segmentsToMute.Add(audioSegment);
+                else
+                    segmentsToRemove.Add(audioSegment);
+            }
+
             await Task.Run(() =>
             {
-                var segments = RedactionSegments
-                    .Select(s => AudioSegment.FromDuration(s.StartTime, s.Duration))
-                    .ToList();
-
-                if (MuteSegments)
+                // First, mute segments if any
+                string tempFile = LoadedFilePath!;
+                if (segmentsToMute.Count > 0)
                 {
-                    _audioEditor.MuteSegments(LoadedFilePath!, saveFileDialog.FileName, segments);
+                    Application.Current.Dispatcher.Invoke(() => 
+                        StatusMessage = $"Muting {segmentsToMute.Count} segment(s)...");
+                    tempFile = Path.Combine(Path.GetTempPath(), $"temp_muted_{Guid.NewGuid()}.wav");
+                    _audioEditor.MuteSegments(LoadedFilePath!, tempFile, segmentsToMute);
                 }
-                else
+                
+                // Then, remove segments if any
+                if (segmentsToRemove.Count > 0)
                 {
-                    _audioEditor.RemoveSegments(LoadedFilePath!, saveFileDialog.FileName, segments);
+                    Application.Current.Dispatcher.Invoke(() => 
+                        StatusMessage = $"Removing {segmentsToRemove.Count} segment(s)...");
+                    _audioEditor.RemoveSegments(tempFile, saveFileDialog.FileName, segmentsToRemove);
+                    
+                    // Clean up temp file if we created one
+                    if (tempFile != LoadedFilePath && File.Exists(tempFile))
+                        File.Delete(tempFile);
+                }
+                else if (segmentsToMute.Count > 0)
+                {
+                    // Only muting, no removal - copy temp file to final destination
+                    File.Copy(tempFile, saveFileDialog.FileName, true);
+                    if (File.Exists(tempFile))
+                        File.Delete(tempFile);
                 }
             });
 
@@ -400,6 +519,7 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         StartTimeText = "00:00.000";
         EndTimeText = "00:00.000";
         MuteSegments = false;
+        ApplyToAll = true;
         StatusMessage = "Ready to load a new file";
     }
 

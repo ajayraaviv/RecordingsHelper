@@ -124,13 +124,13 @@ public class NullToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        bool isNull = value == null;
+        bool isNullOrEmpty = value == null || (value is string str && string.IsNullOrWhiteSpace(str));
         bool inverse = parameter as string == "Inverse";
         
         if (inverse)
-            isNull = !isNull;
+            isNullOrEmpty = !isNullOrEmpty;
             
-        return isNull ? Visibility.Visible : Visibility.Collapsed;
+        return isNullOrEmpty ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
