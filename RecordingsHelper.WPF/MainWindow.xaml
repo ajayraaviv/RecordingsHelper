@@ -36,8 +36,30 @@
 
             <!-- Title Bar -->
             <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
-                <TextBlock Text="Audio Recordings Helper" Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
-                           VerticalAlignment="Center"/>
+                <DockPanel>
+                    <Border DockPanel.Dock="Right"
+                            Background="#FFF59D"
+                            Padding="8,4"
+                            CornerRadius="12"
+                            Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Flask" 
+                                                     Width="16" 
+                                                     Height="16" 
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#F57F17"
+                                                     Margin="0,0,4,0"/>
+                            <TextBlock Text="EXPERIMENTAL" 
+                                       FontWeight="Bold"
+                                       FontSize="11"
+                                       Foreground="#F57F17"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="Audio Recordings Helper" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                               VerticalAlignment="Center"/>
+                </DockPanel>
             </materialDesign:ColorZone>
 
             <!-- Menu Cards -->

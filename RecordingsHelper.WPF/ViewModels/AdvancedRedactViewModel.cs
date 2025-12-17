@@ -29,28 +29,42 @@ namespace RecordingsHelper.WPF.ViewModels
         
         Task.Run(async () =>
         {
-            await Task.Delay(150, token); // Debounce
+            await Task.Delay(300, token); // Increased debounce for better performance
             if (!token.IsCancellationRequested)
             {
-                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => UpdateFilteredItems());
+                // Do filtering off the UI thread
+                var searchText = value;
+                var items = string.IsNullOrWhiteSpace(searchText)
+                    ? TranscriptItems.ToList()
+                    : TranscriptItems.Where(t =>
+                        (!string.IsNullOrEmpty(t.Text) && t.Text.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        || t.SpeakerId.ToString().Contains(searchText)
+                    ).ToList();
+
+                if (!token.IsCancellationRequested)
+                {
+                    // Update UI on UI thread with pre-filtered results
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        FilteredTranscriptItems.Clear();
+                        foreach (var item in items)
+                        {
+                            FilteredTranscriptItems.Add(item);
+                        }
+
+                        // Update status
+                        if (!string.IsNullOrWhiteSpace(searchText))
+                        {
+                            StatusMessage = $"Found {items.Count} matching segment{(items.Count != 1 ? "s" : "")}.";
+                        }
+                        else
+                        {
+                            StatusMessage = string.Empty;
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Background);
+                }
             }
         }, token);
-    }
-
-    private void UpdateFilteredItems()
-    {
-        var items = string.IsNullOrWhiteSpace(SearchText)
-            ? TranscriptItems.ToList()
-            : TranscriptItems.Where(t =>
-                (!string.IsNullOrEmpty(t.Text) && t.Text.IndexOf(SearchText, StringComparison.OrdinalIgnoreCase) >= 0)
-                || t.SpeakerId.ToString().Contains(SearchText)
-            ).ToList();
-
-        FilteredTranscriptItems.Clear();
-        foreach (var item in items)
-        {
-            FilteredTranscriptItems.Add(item);
-        }
     }        private readonly AudioEditor _audioEditor = new();
 
 
@@ -107,7 +121,13 @@ namespace RecordingsHelper.WPF.ViewModels
                         TranscriptItems.Add(new TranscriptItemViewModel(transcript));
                     }
 
-                    UpdateFilteredItems();
+                    // Initialize filtered items with all items
+                    FilteredTranscriptItems.Clear();
+                    foreach (var item in TranscriptItems)
+                    {
+                        FilteredTranscriptItems.Add(item);
+                    }
+                    
                     StatusMessage = $"Loaded {transcripts.Count} transcript segments";
                 }
                 catch (Exception ex)

@@ -76,7 +76,8 @@ public class AudioEditor
             if (bytesToRead <= 0)
                 continue;
 
-            var buffer = new byte[format.AverageBytesPerSecond]; // 1 second buffer
+            // Use 100ms buffer for better performance and consistency with mute operations
+            var buffer = new byte[format.AverageBytesPerSecond / 10]; // 100ms buffer
             var totalBytesRead = 0;
 
             while (totalBytesRead < bytesToRead)
@@ -136,7 +137,8 @@ public class AudioEditor
 
         using var writer = new WaveFileWriter(outputFile, format);
         
-        var buffer = new byte[format.AverageBytesPerSecond]; // 1 second buffer
+        // Use 100ms buffer for better precision while maintaining good performance
+        var buffer = new byte[format.AverageBytesPerSecond / 10]; // 100ms buffer
         var currentTime = TimeSpan.Zero;
         var segmentIndex = 0;
 

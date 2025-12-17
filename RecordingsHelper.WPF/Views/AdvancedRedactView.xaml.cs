@@ -13,14 +13,12 @@ public partial class AdvancedRedactView : UserControl
         InitializeComponent();
     }
 
-    // Toggle IsSelected when the card is clicked (except when clicking the checkbox or toggle)
-    private void SegmentCard_Click(object sender, MouseButtonEventArgs e)
+    // Toggle IsSelected when transcript text is clicked
+    private void TranscriptText_Click(object sender, MouseButtonEventArgs e)
     {
-        var fe = e.OriginalSource as FrameworkElement;
-        if (fe == null) return;
-        if (fe.DataContext is not RecordingsHelper.WPF.ViewModels.TranscriptItemViewModel vm) return;
-        // Avoid toggling if click was on CheckBox or ToggleButton
-        if (fe is CheckBox || fe is ToggleButton) return;
-        vm.IsSelected = !vm.IsSelected;
+        if (sender is FrameworkElement fe && fe.DataContext is RecordingsHelper.WPF.ViewModels.TranscriptItemViewModel vm)
+        {
+            vm.IsSelected = !vm.IsSelected;
+        }
     }
 }

@@ -118,12 +118,39 @@
                         </StackPanel>
                     </Grid>
 
-                    <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding FilteredTranscriptItems}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                    <ListBox ItemsSource="{Binding FilteredTranscriptItems}"
+                             MaxHeight="400"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Focusable" Value="False"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
                                     <materialDesign:Card Margin="0,0,0,8" Padding="12">
-                                        <Grid MouseLeftButtonUp="SegmentCard_Click" Cursor="Hand">
+                                        <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
@@ -163,9 +190,12 @@
                                             </Grid>
                                             <!-- Transcript Text -->
                                             <TextBlock Grid.Row="1"
-                                                      Text="{Binding Text}"
                                                       TextWrapping="Wrap"
-                                                      Margin="32,0,0,8"/>
+                                                      Margin="32,0,0,8"
+                                                      Cursor="Hand"
+                                                      MouseLeftButtonUp="TranscriptText_Click"
+                                                      converters:TextBlockHighlighter.HighlightText="{Binding Text}"
+                                                      converters:TextBlockHighlighter.SearchText="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                                             <!-- Confidence -->
                                             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="32,0,0,0">
                                                 <materialDesign:PackIcon Kind="ChartLine" Width="14" Height="14" Margin="0,0,4,0" Opacity="0.6" VerticalAlignment="Center"/>
@@ -174,9 +204,8 @@
                                         </Grid>
                                     </materialDesign:Card>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
 
                     <!-- Empty State -->
                     <TextBlock Text="No transcript segments loaded. Please load an insights JSON file."
