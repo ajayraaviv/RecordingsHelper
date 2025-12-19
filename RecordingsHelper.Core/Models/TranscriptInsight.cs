@@ -14,10 +14,12 @@ public class TranscriptInstance
 {
     public string Start { get; set; } = string.Empty;
     public string End { get; set; } = string.Empty;
+    public string AdjustedStart { get; set; } = string.Empty;
+    public string AdjustedEnd { get; set; } = string.Empty;
     public double Confidence { get; set; }
     
-    public TimeSpan StartTime => ParseTime(Start);
-    public TimeSpan EndTime => ParseTime(End);
+    public TimeSpan StartTime => ParseTime(AdjustedStart);
+    public TimeSpan EndTime => ParseTime(AdjustedEnd);
     
     private static TimeSpan ParseTime(string timeString)
     {

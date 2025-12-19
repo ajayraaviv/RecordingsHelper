@@ -128,7 +128,7 @@ public partial class RedactViewModel : ObservableObject, IDisposable
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    private bool _muteSegments = false; // false = remove, true = mute
+    private bool _muteSegments = true; // false = remove, true = mute
     
     [ObservableProperty]
     private bool _applyToAll = true;

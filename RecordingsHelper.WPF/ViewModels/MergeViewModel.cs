@@ -149,7 +149,9 @@ public partial class MergeViewModel : ObservableObject
         }
         
         TotalDuration = currentPosition;
-        TotalDurationFormatted = TotalDuration.ToString(@"mm\:ss\.fff");
+        TotalDurationFormatted = TotalDuration.TotalHours >= 1 
+            ? TotalDuration.ToString(@"h\:mm\:ss\.fff")
+            : TotalDuration.ToString(@"mm\:ss\.fff");
     }
 
     [RelayCommand]

@@ -41,6 +41,13 @@ namespace RecordingsHelper.WPF.ViewModels
                         || t.SpeakerId.ToString().Contains(searchText)
                     ).ToList();
 
+                // Debug: Log matching items
+                System.Diagnostics.Debug.WriteLine($"Search: '{searchText}' found {items.Count} items");
+                foreach (var item in items)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  ID={item.Id}, Text='{item.Text.Substring(0, Math.Min(50, item.Text.Length))}...', Time={item.TimeRange}");
+                }
+
                 if (!token.IsCancellationRequested)
                 {
                     // Update UI on UI thread with pre-filtered results
@@ -115,10 +122,29 @@ namespace RecordingsHelper.WPF.ViewModels
                     LoadedInsightsPath = dialog.FileName;
                     var transcripts = InsightsParser.LoadFromJson(dialog.FileName);
 
-                    TranscriptItems.Clear();
+                    // Create items for each instance and collect them
+                    var allItems = new List<TranscriptItemViewModel>();
                     foreach (var transcript in transcripts)
                     {
-                        TranscriptItems.Add(new TranscriptItemViewModel(transcript));
+                        // Create a separate item for each instance
+                        foreach (var instance in transcript.Instances)
+                        {
+                            allItems.Add(new TranscriptItemViewModel(transcript, instance, 0)); // Temporary ID
+                        }
+                    }
+
+                    // Sort by start time and assign sequential IDs
+                    var sortedItems = allItems.OrderBy(item => item.StartTime).ToList();
+                    for (int i = 0; i < sortedItems.Count; i++)
+                    {
+                        sortedItems[i].Id = i + 1;
+                    }
+
+                    // Add to collections
+                    TranscriptItems.Clear();
+                    foreach (var item in sortedItems)
+                    {
+                        TranscriptItems.Add(item);
                     }
 
                     // Initialize filtered items with all items
@@ -128,7 +154,7 @@ namespace RecordingsHelper.WPF.ViewModels
                         FilteredTranscriptItems.Add(item);
                     }
                     
-                    StatusMessage = $"Loaded {transcripts.Count} transcript segments";
+                    StatusMessage = $"Loaded {TranscriptItems.Count} transcript segments from {transcripts.Count} transcript entries";
                 }
                 catch (Exception ex)
                 {
@@ -194,15 +220,12 @@ namespace RecordingsHelper.WPF.ViewModels
 
                     foreach (var item in selectedItems)
                     {
-                        foreach (var instance in item.Transcript.Instances)
-                        {
-                            var segment = new AudioSegment(instance.StartTime, instance.EndTime);
+                        var segment = new AudioSegment(item.StartTime, item.EndTime);
 
-                            if (item.SelectedAction == RedactionAction.Remove)
-                                removeSegments.Add(segment);
-                            else
-                                muteSegments.Add(segment);
-                        }
+                        if (item.SelectedAction == RedactionAction.Remove)
+                            removeSegments.Add(segment);
+                        else
+                            muteSegments.Add(segment);
                     }
 
                     var tempFile = LoadedAudioPath;
@@ -285,27 +308,21 @@ namespace RecordingsHelper.WPF.ViewModels
         }
 
         public TranscriptInsight Transcript { get; }
+        public TranscriptInstance Instance { get; }
 
-        public int Id => Transcript.Id;
+        public int Id { get; set; }
         public string Text => Transcript.Text;
-        public double Confidence => Transcript.Confidence;
+        public double Confidence => Instance.Confidence;
         public int SpeakerId => Transcript.SpeakerId;
-        public string TimeRange
-        {
-            get
-            {
-                if (Transcript.Instances.Count == 0)
-                    return "No timing data";
+        public string TimeRange => $"{FormatTimeSpan(Instance.StartTime)} - {FormatTimeSpan(Instance.EndTime)}";
+        public TimeSpan StartTime => Instance.StartTime;
+        public TimeSpan EndTime => Instance.EndTime;
 
-                var first = Transcript.Instances[0];
-                var last = Transcript.Instances[^1];
-                return $"{FormatTimeSpan(first.StartTime)} - {FormatTimeSpan(last.EndTime)}";
-            }
-        }
-
-        public TranscriptItemViewModel(TranscriptInsight transcript)
+        public TranscriptItemViewModel(TranscriptInsight transcript, TranscriptInstance instance, int id)
         {
             Transcript = transcript;
+            Instance = instance;
+            Id = id;
         }
 
         private static string FormatTimeSpan(TimeSpan time)
