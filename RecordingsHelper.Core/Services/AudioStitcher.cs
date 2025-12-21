@@ -176,12 +176,11 @@ public class AudioStitcher
 
         try
         {
-            // First pass: determine target format (use highest sample rate and max channels)
-            foreach (var file in inputFiles)
+            // First pass: determine target format (use first file's format to preserve original)
+            using (var firstReader = OpenAudioFile(inputFiles[0]))
             {
-                using var reader = OpenAudioFile(file);
-                targetSampleRate = Math.Max(targetSampleRate, reader.WaveFormat.SampleRate);
-                targetChannels = Math.Max(targetChannels, reader.WaveFormat.Channels);
+                targetSampleRate = firstReader.WaveFormat.SampleRate;
+                targetChannels = firstReader.WaveFormat.Channels;
             }
 
             if (targetSampleRate == 0)
@@ -286,12 +285,11 @@ public class AudioStitcher
 
         try
         {
-            // First pass: determine target format (highest sample rate and max channels)
-            foreach (var file in inputFiles)
+            // First pass: determine target format (use first file's format to preserve original)
+            using (var firstReader = OpenAudioFile(inputFiles[0]))
             {
-                using var reader = OpenAudioFile(file);
-                targetSampleRate = Math.Max(targetSampleRate, reader.WaveFormat.SampleRate);
-                targetChannels = Math.Max(targetChannels, reader.WaveFormat.Channels);
+                targetSampleRate = firstReader.WaveFormat.SampleRate;
+                targetChannels = firstReader.WaveFormat.Channels;
             }
 
             if (targetSampleRate == 0)

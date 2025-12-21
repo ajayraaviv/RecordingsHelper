@@ -13,6 +13,7 @@
         <converters:EnumToBoolConverter x:Key="EnumToBoolConverter"/>
         <converters:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         <converters:ActionToTextConverter x:Key="ActionToTextConverter"/>
     </UserControl.Resources>
@@ -33,6 +34,26 @@
                            Style="{StaticResource MaterialDesignHeadline4TextBlock}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
+                
+                <Border Background="#FFF59D" 
+                        CornerRadius="12" 
+                        Padding="8,4" 
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flask" 
+                                                 Width="16" 
+                                                 Height="16" 
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#F57F17"
+                                                 Margin="0,0,4,0"/>
+                        <TextBlock Text="EXPERIMENTAL" 
+                                   FontWeight="Bold" 
+                                   FontSize="11"
+                                   Foreground="#F57F17"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </Grid>
 
             <!-- File Loading Section -->
@@ -213,6 +234,63 @@
                               Opacity="0.6"
                               Margin="0,32,0,0"
                               Visibility="{Binding TranscriptItems.Count, Converter={StaticResource ZeroToVisibilityConverter}}"/>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Compression Settings -->
+            <materialDesign:Card Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Output Format" 
+                               FontWeight="Bold" 
+                               FontSize="16"
+                               Margin="0,0,0,16"/>
+                    
+                    <!-- Compress to MP3 -->
+                    <CheckBox Content="Compress to MP3" 
+                              IsChecked="{Binding CompressToMp3}"
+                              Margin="0,0,0,12">
+                        <CheckBox.ToolTip>
+                            <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                <Run FontWeight="Bold" Text="Compress to MP3:"/>
+                                <LineBreak/>
+                                Converts the output to MP3 format for reduced file size.
+                                <LineBreak/><LineBreak/>
+                                <Run FontWeight="Bold" Text="Unchecked (default):"/> Output as WAV (lossless, larger file)
+                                <LineBreak/>
+                                <Run FontWeight="Bold" Text="Checked:"/> Output as MP3 (compressed, smaller file)
+                            </TextBlock>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+
+                    <!-- MP3 Bitrate (only visible when CompressToMp3 is checked) -->
+                    <StackPanel Visibility="{Binding CompressToMp3, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="MP3 Bitrate (kbps)" Margin="0,0,0,8"/>
+                        <ComboBox ItemsSource="{Binding AvailableBitrates}"
+                                  SelectedItem="{Binding Mp3Bitrate}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                        <Run Text="{Binding Mode=OneWay}"/>
+                                        <Run Text=" kbps"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                            <ComboBox.ToolTip>
+                                <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                    <Run FontWeight="Bold" Text="MP3 Bitrate:"/>
+                                    <LineBreak/>
+                                    Higher bitrate = better quality = larger file
+                                    <LineBreak/><LineBreak/>
+                                    <Run FontWeight="Bold" Text="128 kbps:"/> Standard quality (default)
+                                    <LineBreak/>
+                                    <Run FontWeight="Bold" Text="192 kbps:"/> High quality
+                                    <LineBreak/>
+                                    <Run FontWeight="Bold" Text="320 kbps:"/> Maximum quality
+                                </TextBlock>
+                            </ComboBox.ToolTip>
+                        </ComboBox>
+                    </StackPanel>
                 </StackPanel>
             </materialDesign:Card>
 

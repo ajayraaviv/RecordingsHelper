@@ -9,8 +9,11 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using NAudio.Wave;
+using NAudio.Lame;
 using RecordingsHelper.Core.Services;
 using RecordingsHelper.WPF.Services;
+using RecordingsHelper.WPF.Views;
 
 namespace RecordingsHelper.WPF.ViewModels;
 
@@ -58,6 +61,14 @@ public partial class SplitViewModel : ObservableObject
 
     [ObservableProperty]
     private string _outputPattern = "part_{0}.wav";
+
+    [ObservableProperty]
+    private bool _compressToMp3;
+
+    [ObservableProperty]
+    private int _mp3Bitrate = 128;
+
+    public int[] AvailableBitrates { get; } = { 64, 96, 128, 160, 192, 256, 320 };
 
     public SplitViewModel()
     {
@@ -257,24 +268,66 @@ public partial class SplitViewModel : ObservableObject
         if (folderDialog.ShowDialog() != true)
             return;
 
-        // Stop playback before processing
+        // Store file path before releasing handle
+        var inputFilePath = LoadedFilePath!;
+        var baseFileName = Path.GetFileNameWithoutExtension(inputFilePath);
+
+        // Stop playback and release file handle
         if (IsPlaying || IsPaused)
         {
             Stop();
         }
+        _audioPlayer.Stop();
 
         IsProcessing = true;
         StatusMessage = $"Splitting into {SplitPoints.Count + 1} parts...";
 
+        ProgressDialog? progressDialog = null;
+
         try
         {
+            // Show progress dialog
+            progressDialog = new ProgressDialog { Title = "Splitting Audio File", Owner = Application.Current.MainWindow };
+            
+            var dialogTask = Task.Run(() => Application.Current.Dispatcher.Invoke(() => progressDialog.ShowDialog()));
+            
+            await Task.Delay(100);
+            
+            progressDialog.UpdateMessage($"Splitting into {SplitPoints.Count + 1} parts...");
+
             var outputFiles = await Task.Run(() =>
             {
-                return _audioEditor.SplitAudioFile(
-                    LoadedFilePath!,
+                // Create pattern using source filename
+                var wavPattern = $"{baseFileName}_part_{{0}}.wav";
+                
+                var wavFiles = _audioEditor.SplitAudioFile(
+                    inputFilePath,
                     folderDialog.FolderName,
-                    OutputPattern,
+                    wavPattern,
                     SplitPoints.ToList());
+
+                // Convert to MP3 if compression is enabled
+                if (CompressToMp3)
+                {
+                    progressDialog?.UpdateMessage($"Compressing {wavFiles.Count} files to MP3...");
+                    var mp3Files = new System.Collections.Generic.List<string>();
+
+                    for (int i = 0; i < wavFiles.Count; i++)
+                    {
+                        var wavFile = wavFiles[i];
+                        var mp3File = Path.Combine(folderDialog.FolderName, $"{baseFileName}_part_{i + 1}.mp3");
+                        
+                        ConvertWavToMp3(wavFile, mp3File, Mp3Bitrate);
+                        mp3Files.Add(mp3File);
+                        
+                        // Delete temp WAV file
+                        File.Delete(wavFile);
+                    }
+
+                    return mp3Files;
+                }
+
+                return wavFiles;
             });
 
             StatusMessage = $"Successfully split into {outputFiles.Count} files!";
@@ -295,6 +348,7 @@ public partial class SplitViewModel : ObservableObject
         finally
         {
             IsProcessing = false;
+            progressDialog?.Close();
         }
     }
 
@@ -317,7 +371,23 @@ public partial class SplitViewModel : ObservableObject
         SplitPoints.Clear();
         NewSplitPointText = "00:00.000";
         OutputPattern = "part_{0}.wav";
+        CompressToMp3 = false;
+        Mp3Bitrate = 128;
         StatusMessage = "Ready to load a new file";
+    }
+
+    private void ConvertWavToMp3(string inputPath, string outputPath, int bitrate)
+    {
+        using var reader = new AudioFileReader(inputPath);
+        using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);
+        
+        // Use 4-second buffer for better performance
+        var buffer = new byte[reader.WaveFormat.AverageBytesPerSecond * 4];
+        int bytesRead;
+        while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            writer.Write(buffer, 0, bytesRead);
+        }
     }
 
     private static string FormatTimeSpan(TimeSpan ts)

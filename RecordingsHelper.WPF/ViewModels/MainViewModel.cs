@@ -12,6 +12,7 @@ public partial class MainViewModel : ObservableObject
     public RedactViewModel RedactViewModel { get; }
     public SplitViewModel SplitViewModel { get; }
     public AdvancedRedactViewModel AdvancedRedactViewModel { get; }
+    public ConvertViewModel ConvertViewModel { get; }
 
     public MainViewModel()
     {
@@ -19,6 +20,7 @@ public partial class MainViewModel : ObservableObject
         RedactViewModel = new RedactViewModel();
         SplitViewModel = new SplitViewModel();
         AdvancedRedactViewModel = new AdvancedRedactViewModel();
+        ConvertViewModel = new ConvertViewModel();
         CurrentView = null; // Home page by default
     }
 
@@ -44,6 +46,12 @@ public partial class MainViewModel : ObservableObject
     private void NavigateToAdvancedRedact()
     {
         CurrentView = AdvancedRedactViewModel;
+    }
+
+    [RelayCommand]
+    private void NavigateToConvert()
+    {
+        CurrentView = ConvertViewModel;
     }
 
     [RelayCommand]

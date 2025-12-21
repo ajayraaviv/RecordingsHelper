@@ -10,10 +10,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using NAudio.Wave;
+using NAudio.Lame;
 using RecordingsHelper.Core.Models;
 using RecordingsHelper.Core.Services;
 using RecordingsHelper.WPF.Models;
 using RecordingsHelper.WPF.Services;
+using RecordingsHelper.WPF.Views;
 
 namespace RecordingsHelper.WPF.ViewModels;
 
@@ -128,7 +130,15 @@ public partial class RedactViewModel : ObservableObject, IDisposable
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    private bool _muteSegments = true; // false = remove, true = mute
+    private bool _muteSegments = true;
+
+    [ObservableProperty]
+    private bool _compressToMp3;
+
+    [ObservableProperty]
+    private int _mp3Bitrate = 128;
+
+    public int[] AvailableBitrates { get; } = { 64, 96, 128, 160, 192, 256, 320 }; // false = remove, true = mute
     
     [ObservableProperty]
     private bool _applyToAll = true;
@@ -414,25 +424,44 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
         var saveFileDialog = new SaveFileDialog
         {
-            Filter = "WAV Files|*.wav",
+            Filter = CompressToMp3 ? "MP3 Files|*.mp3" : "WAV Files|*.wav",
             Title = "Save Redacted Audio File",
-            FileName = $"redacted_{Path.GetFileNameWithoutExtension(LoadedFilePath)}.wav"
+            FileName = CompressToMp3 
+                ? $"{Path.GetFileNameWithoutExtension(LoadedFilePath)}_redacted.mp3"
+                : $"{Path.GetFileNameWithoutExtension(LoadedFilePath)}_redacted.wav"
         };
 
         if (saveFileDialog.ShowDialog() != true)
             return;
 
-        // Stop playback before processing
+        // Store the file path before unloading
+        var inputFilePath = LoadedFilePath!;
+
+        // Stop playback and release file handles before processing
         if (IsPlaying || IsPaused)
         {
             Stop();
         }
+        _audioPlayer.Stop(); // Ensure file handle is released
 
         IsProcessing = true;
         StatusMessage = "Processing file...";
 
+        ProgressDialog? progressDialog = null;
+
         try
         {
+            // Show progress dialog on UI thread
+            progressDialog = new ProgressDialog { Title = "Processing Redaction", Owner = Application.Current.MainWindow };
+            
+            // Show dialog asynchronously so it doesn't block
+            var dialogTask = Task.Run(() => Application.Current.Dispatcher.Invoke(() => progressDialog.ShowDialog()));
+            
+            // Give the dialog time to render
+            await Task.Delay(100);
+            
+            progressDialog.UpdateMessage("Preparing segments...");
+
             // Separate segments into mute and remove lists based on per-segment or global setting
             var segmentsToMute = new List<AudioSegment>();
             var segmentsToRemove = new List<AudioSegment>();
@@ -450,33 +479,47 @@ public partial class RedactViewModel : ObservableObject, IDisposable
 
             await Task.Run(() =>
             {
+                var outputPath = saveFileDialog.FileName;
+                var finalWavPath = CompressToMp3 
+                    ? Path.Combine(Path.GetTempPath(), $"temp_final_{Guid.NewGuid()}.wav")
+                    : outputPath;
+
                 // First, mute segments if any
-                string tempFile = LoadedFilePath!;
+                string tempFile = inputFilePath;
                 if (segmentsToMute.Count > 0)
                 {
-                    Application.Current.Dispatcher.Invoke(() => 
-                        StatusMessage = $"Muting {segmentsToMute.Count} segment(s)...");
+                    progressDialog?.UpdateMessage($"Muting {segmentsToMute.Count} segment(s)...");
                     tempFile = Path.Combine(Path.GetTempPath(), $"temp_muted_{Guid.NewGuid()}.wav");
-                    _audioEditor.MuteSegments(LoadedFilePath!, tempFile, segmentsToMute);
+                    _audioEditor.MuteSegments(inputFilePath, tempFile, segmentsToMute);
                 }
                 
                 // Then, remove segments if any
                 if (segmentsToRemove.Count > 0)
                 {
-                    Application.Current.Dispatcher.Invoke(() => 
-                        StatusMessage = $"Removing {segmentsToRemove.Count} segment(s)...");
-                    _audioEditor.RemoveSegments(tempFile, saveFileDialog.FileName, segmentsToRemove);
+                    progressDialog?.UpdateMessage($"Removing {segmentsToRemove.Count} segment(s)...");
+                    _audioEditor.RemoveSegments(tempFile, finalWavPath, segmentsToRemove);
                     
                     // Clean up temp file if we created one
-                    if (tempFile != LoadedFilePath && File.Exists(tempFile))
+                    if (tempFile != inputFilePath && File.Exists(tempFile))
                         File.Delete(tempFile);
                 }
                 else if (segmentsToMute.Count > 0)
                 {
                     // Only muting, no removal - copy temp file to final destination
-                    File.Copy(tempFile, saveFileDialog.FileName, true);
+                    File.Copy(tempFile, finalWavPath, true);
                     if (File.Exists(tempFile))
                         File.Delete(tempFile);
+                }
+
+                // Convert to MP3 if compression is enabled
+                if (CompressToMp3)
+                {
+                    progressDialog?.UpdateMessage("Compressing to MP3...");
+                    ConvertWavToMp3(finalWavPath, outputPath, Mp3Bitrate);
+                    
+                    // Clean up temporary WAV file
+                    if (File.Exists(finalWavPath))
+                        File.Delete(finalWavPath);
                 }
             });
 
@@ -494,6 +537,7 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         finally
         {
             IsProcessing = false;
+            progressDialog?.Close();
         }
     }
     
@@ -518,8 +562,10 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         NewSegmentEnd = TimeSpan.Zero;
         StartTimeText = "00:00.000";
         EndTimeText = "00:00.000";
-        MuteSegments = false;
+        MuteSegments = true;
         ApplyToAll = true;
+        CompressToMp3 = false;
+        Mp3Bitrate = 128;
         StatusMessage = "Ready to load a new file";
     }
 
@@ -539,6 +585,18 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         {
             CurrentPosition = newPosition;
             _audioPlayer.Position = newPosition;
+        }
+    }
+
+    private void ConvertWavToMp3(string inputPath, string outputPath, int bitrate)
+    {
+        using var reader = new AudioFileReader(inputPath);
+        using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);
+        byte[] buffer = new byte[reader.WaveFormat.AverageBytesPerSecond * 4]; // 4 second buffer for better performance
+        int bytesRead;
+        while ((bytesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            writer.Write(buffer, 0, bytesRead);
         }
     }
 

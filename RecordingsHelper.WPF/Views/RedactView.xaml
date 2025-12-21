@@ -64,6 +64,27 @@
                            Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
                            VerticalAlignment="Center"
                            Margin="16,0,0,0"/>
+                
+                <Border Background="#FFF59D" 
+                        CornerRadius="12" 
+                        Padding="8,4" 
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flask" 
+                                                 Width="16" 
+                                                 Height="16" 
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#F57F17"
+                                                 Margin="0,0,4,0"/>
+                        <TextBlock Text="EXPERIMENTAL" 
+                                   FontWeight="Bold" 
+                                   FontSize="11"
+                                   Foreground="#F57F17"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </DockPanel>
         </materialDesign:ColorZone>
 
@@ -82,6 +103,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Command="{Binding LoadFileCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
+                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
                                 Margin="0,0,8,0">
                             <Button.Content>
                                 <StackPanel Orientation="Horizontal">
@@ -93,8 +115,8 @@
                         
                         <Button Command="{Binding UnloadFileCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
-                                IsEnabled="{Binding IsFileLoaded}"
-                                ToolTip="Clear the loaded file and reset">
+                                ToolTip="Clear the loaded file and reset"
+                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}">
                             <Button.Content>
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="Close" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -269,81 +291,153 @@
                                 <TextBlock Text="Add Redaction Segment"/>
                             </StackPanel>
                         </Button>
+                    </Grid>
                         
-                        <!-- Action Mode Selection -->
-                        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
-                                Background="{DynamicResource MaterialDesignChipBackground}"
-                                Padding="12"
-                                CornerRadius="4"
-                                Margin="0,16,0,0">
+                    <!-- Action Mode Selection -->
+                    <Border Background="{DynamicResource MaterialDesignChipBackground}"
+                            Padding="12"
+                            CornerRadius="4"
+                            Margin="0,16,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <!-- Global Action Toggle -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" 
+                                       Text="Global Action:" 
+                                       FontWeight="Medium"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Row="0" Grid.Column="1" 
+                                       Orientation="Horizontal"
+                                       Margin="0,0,0,12">
+                                <TextBlock Text="Remove" 
+                                           VerticalAlignment="Center" 
+                                           Margin="0,0,8,0"
+                                           FontWeight="Medium"/>
+                                <ToggleButton IsChecked="{Binding MuteSegments}" 
+                                              Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,8,0"
+                                              ToolTip="Toggle between Remove and Mute for all segments using global setting"/>
+                                <TextBlock Text="Mute" 
+                                           VerticalAlignment="Center"
+                                           FontWeight="Medium"/>
+                            </StackPanel>
+                            
+                            <!-- Apply Mode -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" 
+                                       Text="Apply Mode:" 
+                                       FontWeight="Medium"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,16,0"/>
+                            
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton Content="Apply to All" 
+                                             IsChecked="{Binding ApplyToAll}"
+                                             Margin="0,0,24,0"
+                                             VerticalAlignment="Center"
+                                             GroupName="ApplyMode">
+                                    <RadioButton.ToolTip>
+                                        <TextBlock Text="All segments use the global mute/remove setting from above"
+                                                   TextWrapping="Wrap"
+                                                   MaxWidth="250"/>
+                                    </RadioButton.ToolTip>
+                                </RadioButton>
+
+                                <RadioButton Content="Per Segment" 
+                                             IsChecked="{Binding ApplyToAll, Converter={StaticResource InverseBooleanConverter}}"
+                                             VerticalAlignment="Center"
+                                             GroupName="ApplyMode">
+                                    <RadioButton.ToolTip>
+                                        <TextBlock Text="Customize mute/remove for each segment individually. Checkboxes will be unchecked to allow customization."
+                                                   TextWrapping="Wrap"
+                                                   MaxWidth="250"/>
+                                    </RadioButton.ToolTip>
+                                </RadioButton>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Compression Settings -->
+                    <Border Background="{DynamicResource MaterialDesignDivider}" 
+                            Padding="12" 
+                            CornerRadius="4"
+                            Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Output Format" 
+                                       FontWeight="Bold" 
+                                       Margin="0,0,0,8"/>
+                            
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 
-                                <!-- Global Action Toggle -->
-                                <TextBlock Grid.Row="0" Grid.Column="0" 
-                                           Text="Global Action:" 
-                                           FontWeight="Medium"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,0"/>
-                                
-                                <StackPanel Grid.Row="0" Grid.Column="1" 
-                                           Orientation="Horizontal"
-                                           Margin="0,0,0,12">
-                                    <TextBlock Text="Remove" 
-                                               VerticalAlignment="Center" 
-                                               Margin="0,0,8,0"
-                                               FontWeight="Medium"/>
-                                    <ToggleButton IsChecked="{Binding MuteSegments}" 
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                                  VerticalAlignment="Center"
-                                                  Margin="0,0,8,0"
-                                                  ToolTip="Toggle between Remove and Mute for all segments using global setting"/>
-                                    <TextBlock Text="Mute" 
-                                               VerticalAlignment="Center"
-                                               FontWeight="Medium"/>
-                                </StackPanel>
-                                
-                                <!-- Apply Mode -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" 
-                                           Text="Apply Mode:" 
-                                           FontWeight="Medium"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,16,0"/>
-                                
-                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
-                                    <RadioButton Content="Apply to All" 
-                                                 IsChecked="{Binding ApplyToAll}"
-                                                 Margin="0,0,24,0"
-                                                 VerticalAlignment="Center"
-                                                 GroupName="ApplyMode">
-                                        <RadioButton.ToolTip>
-                                            <TextBlock Text="All segments use the global mute/remove setting from above"
-                                                       TextWrapping="Wrap"
-                                                       MaxWidth="250"/>
-                                        </RadioButton.ToolTip>
-                                    </RadioButton>
+                                <!-- Compress to MP3 -->
+                                <CheckBox Grid.Column="0"
+                                          Content="Compress to MP3" 
+                                          IsChecked="{Binding CompressToMp3}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,16,0">
+                                    <CheckBox.ToolTip>
+                                        <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                            <Run FontWeight="Bold" Text="Compress to MP3:"/>
+                                            <LineBreak/>
+                                            Converts the output to MP3 format for reduced file size.
+                                            <LineBreak/><LineBreak/>
+                                            <Run FontWeight="Bold" Text="Unchecked (default):"/> Output as WAV (lossless, larger file)
+                                            <LineBreak/>
+                                            <Run FontWeight="Bold" Text="Checked:"/> Output as MP3 (compressed, smaller file)
+                                        </TextBlock>
+                                    </CheckBox.ToolTip>
+                                </CheckBox>
 
-                                    <RadioButton Content="Per Segment" 
-                                                 IsChecked="{Binding ApplyToAll, Converter={StaticResource InverseBooleanConverter}}"
-                                                 VerticalAlignment="Center"
-                                                 GroupName="ApplyMode">
-                                        <RadioButton.ToolTip>
-                                            <TextBlock Text="Customize mute/remove for each segment individually. Checkboxes will be unchecked to allow customization."
-                                                       TextWrapping="Wrap"
-                                                       MaxWidth="250"/>
-                                        </RadioButton.ToolTip>
-                                    </RadioButton>
+                                <!-- MP3 Bitrate (only visible when CompressToMp3 is checked) -->
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Visibility="{Binding CompressToMp3, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Text="Bitrate:" 
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <ComboBox ItemsSource="{Binding AvailableBitrates}"
+                                              SelectedItem="{Binding Mp3Bitrate}"
+                                              MinWidth="120"
+                                              Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock>
+                                                    <Run Text="{Binding Mode=OneWay}"/>
+                                                    <Run Text=" kbps"/>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                        <ComboBox.ToolTip>
+                                            <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                                <Run FontWeight="Bold" Text="MP3 Bitrate:"/>
+                                                <LineBreak/>
+                                                Higher bitrate = better quality = larger file
+                                                <LineBreak/><LineBreak/>
+                                                <Run FontWeight="Bold" Text="128 kbps:"/> Standard quality (default)
+                                                <LineBreak/>
+                                                <Run FontWeight="Bold" Text="192 kbps:"/> High quality
+                                                <LineBreak/>
+                                                <Run FontWeight="Bold" Text="320 kbps:"/> Maximum quality
+                                            </TextBlock>
+                                        </ComboBox.ToolTip>
+                                    </ComboBox>
                                 </StackPanel>
                             </Grid>
-                        </Border>
-                    </Grid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </materialDesign:Card>
 
@@ -514,7 +608,6 @@
                 <Button DockPanel.Dock="Right" 
                         Command="{Binding ProcessFileCommand}"
                         Style="{StaticResource MaterialDesignRaisedButton}"
-                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
                         Height="40"
                         Padding="32,0">
                     <Button.Content>

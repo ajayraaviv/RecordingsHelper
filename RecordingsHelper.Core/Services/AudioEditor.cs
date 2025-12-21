@@ -144,27 +144,31 @@ public class AudioEditor
 
         while (reader.Position < reader.Length)
         {
+            var bytesRead = reader.Read(buffer, 0, buffer.Length);
+            if (bytesRead == 0)
+                break;
+
             // Check if we're in a segment that should be muted
             var shouldMute = false;
             
-            if (segmentIndex < sortedSegments.Count)
+            while (segmentIndex < sortedSegments.Count)
             {
                 var currentSegment = sortedSegments[segmentIndex];
+                
+                if (currentTime >= currentSegment.End)
+                {
+                    // Move to next segment and recheck
+                    segmentIndex++;
+                    continue;
+                }
                 
                 if (currentTime >= currentSegment.Start && currentTime < currentSegment.End)
                 {
                     shouldMute = true;
                 }
-                else if (currentTime >= currentSegment.End)
-                {
-                    segmentIndex++;
-                    continue; // Recheck with next segment
-                }
+                
+                break; // Exit the while loop after checking current segment
             }
-
-            var bytesRead = reader.Read(buffer, 0, buffer.Length);
-            if (bytesRead == 0)
-                break;
 
             if (shouldMute)
             {
@@ -402,6 +406,13 @@ public class AudioEditor
             while (totalBytesRead < bytesToRead)
             {
                 var bytesToReadNow = Math.Min(buffer.Length, bytesToRead - totalBytesRead);
+                
+                // Ensure we read complete blocks - align to BlockAlign
+                bytesToReadNow = (bytesToReadNow / format.BlockAlign) * format.BlockAlign;
+                
+                if (bytesToReadNow == 0)
+                    break;
+                
                 var bytesRead = reader.Read(buffer, 0, bytesToReadNow);
                 
                 if (bytesRead == 0)

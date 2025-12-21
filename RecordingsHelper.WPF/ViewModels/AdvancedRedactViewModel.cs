@@ -2,11 +2,15 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using NAudio.Wave;
+using NAudio.Lame;
 using RecordingsHelper.Core.Models;
 using RecordingsHelper.Core.Services;
+using RecordingsHelper.WPF.Views;
 
 namespace RecordingsHelper.WPF.ViewModels
 {
@@ -86,6 +90,14 @@ namespace RecordingsHelper.WPF.ViewModels
 
         [ObservableProperty]
         private string _statusMessage = string.Empty;
+
+        [ObservableProperty]
+        private bool _compressToMp3;
+
+        [ObservableProperty]
+        private int _mp3Bitrate = 128;
+
+        public int[] AvailableBitrates { get; } = { 64, 96, 128, 160, 192, 256, 320 };
 
 
         public ObservableCollection<TranscriptItemViewModel> TranscriptItems { get; } = new();
@@ -205,9 +217,11 @@ namespace RecordingsHelper.WPF.ViewModels
 
             var saveDialog = new SaveFileDialog
             {
-                Filter = "WAV Files|*.wav|MP3 Files|*.mp3|OGG Files|*.ogg",
+                Filter = CompressToMp3 ? "MP3 Files|*.mp3" : "WAV Files|*.wav",
                 Title = "Save Redacted Audio",
-                FileName = Path.GetFileNameWithoutExtension(LoadedAudioPath) + "_redacted"
+                FileName = CompressToMp3
+                    ? Path.GetFileNameWithoutExtension(LoadedAudioPath) + "_redacted.mp3"
+                    : Path.GetFileNameWithoutExtension(LoadedAudioPath) + "_redacted.wav"
             };
 
             if (saveDialog.ShowDialog() != true)
@@ -216,8 +230,21 @@ namespace RecordingsHelper.WPF.ViewModels
             IsProcessing = true;
             StatusMessage = $"Processing {selectedItems.Count} segments...";
 
+            ProgressDialog? progressDialog = null;
+
             try
             {
+                // Show progress dialog on UI thread
+                progressDialog = new ProgressDialog { Title = "Processing Redactions", Owner = Application.Current.MainWindow };
+                
+                // Show dialog asynchronously so it doesn't block
+                var dialogTask = Task.Run(() => Application.Current.Dispatcher.Invoke(() => progressDialog.ShowDialog()));
+                
+                // Give the dialog time to render
+                await Task.Delay(100);
+                
+                progressDialog.UpdateMessage($"Processing {selectedItems.Count} segments...");
+
                 await Task.Run(() =>
                 {
                     // Group segments by action type
@@ -234,12 +261,17 @@ namespace RecordingsHelper.WPF.ViewModels
                             muteSegments.Add(segment);
                     }
 
+                    var outputPath = saveDialog.FileName;
+                    var finalWavPath = CompressToMp3
+                        ? Path.Combine(Path.GetTempPath(), $"temp_final_{Guid.NewGuid()}.wav")
+                        : outputPath;
+
                     var tempFile = LoadedAudioPath;
 
                     // Process MUTE segments first (doesn't change timeline)
                     if (muteSegments.Count > 0)
                     {
-                        var outputFile = removeSegments.Count > 0 ? Path.GetTempFileName() : saveDialog.FileName;
+                        var outputFile = removeSegments.Count > 0 ? Path.GetTempFileName() : finalWavPath;
                         _audioEditor.MuteSegments(tempFile, outputFile, muteSegments);
 
                         if (tempFile != LoadedAudioPath && File.Exists(tempFile))
@@ -251,10 +283,21 @@ namespace RecordingsHelper.WPF.ViewModels
                     // Process REMOVE segments after (changes timeline)
                     if (removeSegments.Count > 0)
                     {
-                        _audioEditor.RemoveSegments(tempFile, saveDialog.FileName, removeSegments);
+                        _audioEditor.RemoveSegments(tempFile, finalWavPath, removeSegments);
 
-                        if (tempFile != LoadedAudioPath && tempFile != saveDialog.FileName && File.Exists(tempFile))
+                        if (tempFile != LoadedAudioPath && tempFile != finalWavPath && File.Exists(tempFile))
                             File.Delete(tempFile);
+                    }
+
+                    // Convert to MP3 if compression is enabled
+                    if (CompressToMp3)
+                    {
+                        progressDialog?.UpdateMessage("Compressing to MP3...");
+                        ConvertWavToMp3(finalWavPath, outputPath, Mp3Bitrate);
+
+                        // Clean up temporary WAV file
+                        if (File.Exists(finalWavPath))
+                            File.Delete(finalWavPath);
                     }
                 });
 
@@ -268,6 +311,7 @@ namespace RecordingsHelper.WPF.ViewModels
             finally
             {
                 IsProcessing = false;
+                progressDialog?.Close();
             }
         }
 
@@ -289,9 +333,14 @@ namespace RecordingsHelper.WPF.ViewModels
         FilteredTranscriptItems.Clear();
         StatusMessage = string.Empty;
     }
-    }
 
-    public enum RedactionAction
+    private void ConvertWavToMp3(string inputPath, string outputPath, int bitrate)
+    {
+        using var reader = new AudioFileReader(inputPath);
+        using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);
+        reader.CopyTo(writer);
+    }
+}    public enum RedactionAction
     {
         Mute,
         Remove

@@ -40,6 +40,26 @@
                            Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
                            VerticalAlignment="Center"
                            Margin="16,0,0,0"/>
+                <Border Background="#FFF59D" 
+                        CornerRadius="12" 
+                        Padding="8,4" 
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flask" 
+                                                 Width="16" 
+                                                 Height="16" 
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#F57F17"
+                                                 Margin="0,0,4,0"/>
+                        <TextBlock Text="EXPERIMENTAL" 
+                                   FontWeight="Bold" 
+                                   FontSize="11"
+                                   Foreground="#F57F17"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
             </DockPanel>
         </materialDesign:ColorZone>
 
@@ -207,6 +227,54 @@
                         </TextBox.ToolTip>
                     </TextBox>
 
+                    <!-- Compress to MP3 -->
+                    <CheckBox Content="Compress to MP3" 
+                              IsChecked="{Binding CompressToMp3}"
+                              Margin="0,0,0,16">
+                        <CheckBox.ToolTip>
+                            <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                <Run FontWeight="Bold" Text="Compress to MP3:"/>
+                                <LineBreak/>
+                                Converts the output to MP3 format for reduced file size. 
+                                <LineBreak/><LineBreak/>
+                                <Run FontWeight="Bold" Text="Unchecked (default):"/> Output as WAV (lossless, larger file)
+                                <LineBreak/>
+                                <Run FontWeight="Bold" Text="Checked:"/> Output as MP3 (compressed, smaller file)
+                            </TextBlock>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+
+                    <!-- MP3 Bitrate (only visible when CompressToMp3 is checked) -->
+                    <StackPanel Visibility="{Binding CompressToMp3, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="MP3 Bitrate (kbps)" Margin="0,0,0,8"/>
+                        <ComboBox ItemsSource="{Binding AvailableBitrates}"
+                                  SelectedItem="{Binding Mp3Bitrate}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                  Margin="0,0,0,16">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                        <Run Text="{Binding Mode=OneWay}"/>
+                                        <Run Text=" kbps"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                            <ComboBox.ToolTip>
+                                <TextBlock MaxWidth="300" TextWrapping="Wrap">
+                                    <Run FontWeight="Bold" Text="MP3 Bitrate:"/>
+                                    <LineBreak/>
+                                    Higher bitrate = better quality = larger file
+                                    <LineBreak/><LineBreak/>
+                                    <Run FontWeight="Bold" Text="128 kbps:"/> Standard quality (default)
+                                    <LineBreak/>
+                                    <Run FontWeight="Bold" Text="192 kbps:"/> High quality
+                                    <LineBreak/>
+                                    <Run FontWeight="Bold" Text="320 kbps:"/> Maximum quality
+                                </TextBlock>
+                            </ComboBox.ToolTip>
+                        </ComboBox>
+                    </StackPanel>
+
                     <!-- Info -->
                     <Border Background="{DynamicResource MaterialDesignDivider}" 
                             Padding="12" 
@@ -249,7 +317,6 @@
                 <Button DockPanel.Dock="Right" 
                         Command="{Binding MergeFilesCommand}"
                         Style="{StaticResource MaterialDesignRaisedButton}"
-                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
                         Height="40"
                         Padding="32,0">
                     <Button.Content>

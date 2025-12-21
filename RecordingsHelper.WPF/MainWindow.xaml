@@ -152,6 +152,24 @@
                             </StackPanel>
                         </Button>
                     </materialDesign:Card>
+
+                        <!-- Convert to MP3 Card -->
+                        <materialDesign:Card Grid.Row="1" Grid.Column="1" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToConvertCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Convert WAV files to MP3 format with compression options. Reduce file size while maintaining audio quality. Supports batch conversion.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="FileMusic" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Convert to MP3" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Convert WAV to MP3 with compression" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
                 </Grid>
             </StackPanel>
         </ScrollViewer>
@@ -172,6 +190,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:AdvancedRedactViewModel}">
                         <views:AdvancedRedactView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:ConvertViewModel}">
+                        <views:ConvertView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

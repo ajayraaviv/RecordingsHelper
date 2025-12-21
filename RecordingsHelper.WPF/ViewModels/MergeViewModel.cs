@@ -8,8 +8,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using NAudio.Wave;
+using NAudio.Lame;
 using RecordingsHelper.Core.Services;
 using RecordingsHelper.WPF.Models;
+using RecordingsHelper.WPF.Views;
 
 namespace RecordingsHelper.WPF.ViewModels;
 
@@ -37,6 +39,14 @@ public partial class MergeViewModel : ObservableObject
 
     [ObservableProperty]
     private string _totalDurationFormatted = "00:00.000";
+
+    [ObservableProperty]
+    private bool _compressToMp3;
+
+    [ObservableProperty]
+    private int _mp3Bitrate = 128;
+
+    public int[] AvailableBitrates { get; } = { 64, 96, 128, 160, 192, 256, 320 };
 
     public MergeViewModel()
     {
@@ -165,9 +175,11 @@ public partial class MergeViewModel : ObservableObject
 
         var saveFileDialog = new SaveFileDialog
         {
-            Filter = "WAV Files|*.wav",
+            Filter = CompressToMp3 ? "MP3 Files|*.mp3" : "WAV Files|*.wav",
             Title = "Save Merged Audio File",
-            FileName = "merged_audio.wav"
+            FileName = CompressToMp3 
+                ? $"{Path.GetFileNameWithoutExtension(AudioFiles[0].FileName)}_merged.mp3" 
+                : $"{Path.GetFileNameWithoutExtension(AudioFiles[0].FileName)}_merged.wav"
         };
 
         if (saveFileDialog.ShowDialog() != true)
@@ -176,23 +188,55 @@ public partial class MergeViewModel : ObservableObject
         IsProcessing = true;
         StatusMessage = "Merging audio files...";
 
+        ProgressDialog? progressDialog = null;
+
         try
         {
+            // Show progress dialog on UI thread
+            progressDialog = new ProgressDialog { Title = "Merging Audio Files", Owner = Application.Current.MainWindow };
+            
+            // Show dialog asynchronously so it doesn't block
+            var dialogTask = Task.Run(() => Application.Current.Dispatcher.Invoke(() => progressDialog.ShowDialog()));
+            
+            // Give the dialog time to render
+            await Task.Delay(100);
+            
+            progressDialog.UpdateMessage($"Merging {AudioFiles.Count} files...");
+
             await Task.Run(() =>
             {
                 var filePaths = AudioFiles.Select(f => f.FilePath).ToArray();
+                var outputPath = saveFileDialog.FileName;
+                var tempWavPath = outputPath;
+
+                // If compressing to MP3, first create a temporary WAV file
+                if (CompressToMp3)
+                {
+                    tempWavPath = Path.Combine(Path.GetTempPath(), $"temp_merge_{Guid.NewGuid()}.wav");
+                }
 
                 if (NormalizeAudio && CrossfadeDuration > 0)
                 {
-                    _audioStitcher.StitchWithNormalization(filePaths, saveFileDialog.FileName, (float)CrossfadeDuration);
+                    _audioStitcher.StitchWithNormalization(filePaths, tempWavPath, (float)CrossfadeDuration);
                 }
                 else if (NormalizeAudio)
                 {
-                    _audioStitcher.StitchWithNormalization(filePaths, saveFileDialog.FileName);
+                    _audioStitcher.StitchWithNormalization(filePaths, tempWavPath);
                 }
                 else
                 {
-                    _audioStitcher.StitchAudioFiles(filePaths, saveFileDialog.FileName);
+                    _audioStitcher.StitchAudioFiles(filePaths, tempWavPath);
+                }
+
+                // Convert to MP3 if compression is enabled
+                if (CompressToMp3)
+                {
+                    progressDialog?.UpdateMessage("Compressing to MP3...");
+                    ConvertWavToMp3(tempWavPath, outputPath, Mp3Bitrate);
+                    
+                    // Clean up temporary WAV file
+                    if (File.Exists(tempWavPath))
+                        File.Delete(tempWavPath);
                 }
             });
 
@@ -210,6 +254,7 @@ public partial class MergeViewModel : ObservableObject
         finally
         {
             IsProcessing = false;
+            progressDialog?.Close();
         }
     }
     
@@ -221,11 +266,20 @@ public partial class MergeViewModel : ObservableObject
         // Reset settings to defaults
         NormalizeAudio = false;
         CrossfadeDuration = 0.0;
+        CompressToMp3 = false;
+        Mp3Bitrate = 128;
         
         // Clear calculated properties
         TotalDuration = TimeSpan.Zero;
         TotalDurationFormatted = "00:00.000";
         
         StatusMessage = "Ready to merge new files";
+    }
+
+    private void ConvertWavToMp3(string inputPath, string outputPath, int bitrate)
+    {
+        using var reader = new AudioFileReader(inputPath);
+        using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);
+        reader.CopyTo(writer);
     }
 }

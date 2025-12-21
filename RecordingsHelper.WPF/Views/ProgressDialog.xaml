@@ -1,0 +1,41 @@
+<Window x:Class="RecordingsHelper.WPF.Views.ProgressDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Processing" 
+        Height="200" 
+        Width="400"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        AllowsTransparency="True">
+    
+    <Border Background="{DynamicResource MaterialDesignPaper}"
+            CornerRadius="8"
+            Padding="32"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource PrimaryHueMidBrush}">
+        <StackPanel>
+            <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,24"/>
+            
+            <TextBlock x:Name="MessageTextBlock"
+                       Text="Processing, please wait..."
+                       Style="{StaticResource MaterialDesignBody1TextBlock}"
+                       TextAlignment="Center"
+                       Margin="0,0,0,16"/>
+            
+            <ProgressBar IsIndeterminate="True"
+                        Height="4"
+                        Margin="0,0,0,16"/>
+            
+            <TextBlock Text="Please do not close this window"
+                       FontSize="12"
+                       Opacity="0.6"
+                       TextAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>

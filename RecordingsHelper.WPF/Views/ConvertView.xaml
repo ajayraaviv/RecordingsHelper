@@ -1,0 +1,265 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.ConvertView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RecordingsHelper.WPF.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </UserControl.InputBindings>
+    
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+    </UserControl.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                <TextBlock Text="Convert WAV to MP3" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+                <Border Background="#FFF59D" 
+                        CornerRadius="12" 
+                        Padding="8,4" 
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flask" 
+                                                 Width="16" 
+                                                 Height="16" 
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#F57F17"
+                                                 Margin="0,0,4,0"/>
+                        <TextBlock Text="EXPERIMENTAL" 
+                                   FontWeight="Bold" 
+                                   FontSize="11"
+                                   Foreground="#F57F17"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Settings Panel -->
+            <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Conversion Settings" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Bitrate Selection -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="MP3 Bitrate (kbps)" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding AvailableBitrates}"
+                                      SelectedItem="{Binding SelectedBitrate}"
+                                      IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                                      materialDesign:HintAssist.Hint="Select bitrate"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock>
+                                            <Run Text="{Binding Mode=OneWay}"/>
+                                            <Run Text=" kbps"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Text="Higher bitrate = better quality = larger file" 
+                                       Opacity="0.7" 
+                                       FontSize="11" 
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
+
+                        <!-- Output Folder -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Output Folder" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" 
+                                         Text="{Binding OutputFolder, Mode=TwoWay}"
+                                         IsReadOnly="True"
+                                         materialDesign:HintAssist.Hint="Select output folder"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding SelectOutputFolderCommand}"
+                                        Style="{StaticResource MaterialDesignIconButton}"
+                                        ToolTip="Browse for folder"
+                                        Margin="8,0,0,0">
+                                    <materialDesign:PackIcon Kind="FolderOpen" Width="24" Height="24"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Delete Original Option -->
+                    <CheckBox IsChecked="{Binding DeleteOriginal}"
+                              Content="Delete original WAV files after conversion"
+                              Margin="0,16,0,0"
+                              IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"/>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <!-- Files List -->
+            <materialDesign:Card Grid.Row="1" Padding="16">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" 
+                               Text="Files to Convert" 
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16"/>
+
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,16">
+                        <Button Command="{Binding AddFilesCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FilePlus" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Add WAV Files"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ClearAllCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="DeleteSweep" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Clear All"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Files DataGrid -->
+                    <DataGrid ItemsSource="{Binding Files}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              CanUserSortColumns="True"
+                              SelectionMode="Single"
+                              IsReadOnly="True"
+                              materialDesign:DataGridAssist.CellPadding="8"
+                              materialDesign:DataGridAssist.ColumnHeaderPadding="8">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="File Name" 
+                                                Binding="{Binding FileName}" 
+                                                Width="2*"/>
+                            <DataGridTextColumn Header="Original Size" 
+                                                Binding="{Binding OriginalSizeFormatted}" 
+                                                Width="*"/>
+                            <DataGridTextColumn Header="MP3 Size" 
+                                                Binding="{Binding ConvertedSizeFormatted}" 
+                                                Width="*"/>
+                            <DataGridTextColumn Header="Savings" 
+                                                Binding="{Binding SavingsFormatted}" 
+                                                Width="*"/>
+                            <DataGridTextColumn Header="Status" 
+                                                Binding="{Binding Status}" 
+                                                Width="1.5*"/>
+                            <DataGridTemplateColumn Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Command="{Binding DataContext.RemoveFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource MaterialDesignIconButton}"
+                                                ToolTip="Remove file"
+                                                IsEnabled="{Binding DataContext.IsProcessing, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBooleanConverter}}">
+                                            <materialDesign:PackIcon Kind="Delete" Width="20" Height="20"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </materialDesign:Card>
+
+            <!-- Progress Panel -->
+            <materialDesign:Card Grid.Row="2" Padding="16" Margin="0,16,0,0"
+                                 Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               Style="{StaticResource MaterialDesignBody1TextBlock}"
+                               Margin="0,0,0,8"/>
+                    <ProgressBar Value="{Binding Progress}" 
+                                 Minimum="0" 
+                                 Maximum="100"
+                                 Height="8"
+                                 Style="{StaticResource MaterialDesignLinearProgressBar}"/>
+                    <TextBlock Margin="0,4,0,0">
+                        <Run Text="Progress: "/>
+                        <Run Text="{Binding ProcessedFiles}"/>
+                        <Run Text=" / "/>
+                        <Run Text="{Binding TotalFiles}"/>
+                        <Run Text=" files ("/>
+                        <Run Text="{Binding Progress}"/>
+                        <Run Text="%)"/>
+                    </TextBlock>
+                </StackPanel>
+            </materialDesign:Card>
+        </Grid>
+
+        <!-- Bottom Bar -->
+        <materialDesign:ColorZone Grid.Row="2" Mode="PrimaryLight" Padding="16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding StatusMessage}" 
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+
+                <Button Grid.Column="1"
+                        Command="{Binding ConvertFilesCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="MusicBoxMultiple" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="Convert to MP3"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </materialDesign:ColorZone>
+    </Grid>
+</UserControl>
