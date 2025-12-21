@@ -171,29 +171,55 @@ public class AudioStitcher
         }
 
         var streams = new List<ISampleProvider>();
-        WaveFormat? format = null;
+        int targetSampleRate = 0;
+        int targetChannels = 0;
 
         try
         {
-            // Load all files as sample providers
+            // First pass: determine target format (use highest sample rate and max channels)
+            foreach (var file in inputFiles)
+            {
+                using var reader = OpenAudioFile(file);
+                targetSampleRate = Math.Max(targetSampleRate, reader.WaveFormat.SampleRate);
+                targetChannels = Math.Max(targetChannels, reader.WaveFormat.Channels);
+            }
+
+            if (targetSampleRate == 0)
+                throw new InvalidOperationException("Could not determine audio format");
+
+            // Second pass: Load all files as sample providers with normalized format
             foreach (var file in inputFiles)
             {
                 var reader = OpenAudioFile(file);
                 var sampleProvider = reader.ToSampleProvider();
                 
-                if (format == null)
+                // Convert to target channel count if needed
+                if (sampleProvider.WaveFormat.Channels != targetChannels)
                 {
-                    format = reader.WaveFormat;
+                    if (sampleProvider.WaveFormat.Channels == 1 && targetChannels == 2)
+                    {
+                        sampleProvider = new MonoToStereoSampleProvider(sampleProvider);
+                    }
+                    else if (sampleProvider.WaveFormat.Channels == 2 && targetChannels == 1)
+                    {
+                        sampleProvider = new StereoToMonoSampleProvider(sampleProvider);
+                    }
+                    else if (sampleProvider.WaveFormat.Channels > 2 && targetChannels == 2)
+                    {
+                        sampleProvider = new MultichannelToStereoSampleProvider(sampleProvider);
+                    }
+                }
+
+                // Resample if needed
+                if (sampleProvider.WaveFormat.SampleRate != targetSampleRate)
+                {
+                    sampleProvider = new WdlResamplingSampleProvider(sampleProvider, targetSampleRate);
                 }
 
                 streams.Add(sampleProvider);
             }
 
-            if (format == null)
-                throw new InvalidOperationException("Could not determine audio format");
-
             // Create crossfaded sequence
-            var crossfadeSamples = (int)(format.SampleRate * (crossfadeDuration / 1000.0));
             var concatenated = new ConcatenatingSampleProvider(streams);
 
             // Write output
@@ -255,24 +281,54 @@ public class AudioStitcher
             throw new ArgumentException("At least one input file is required", nameof(inputFiles));
 
         var normalizedProviders = new List<ISampleProvider>();
-        WaveFormat? format = null;
+        int targetSampleRate = 0;
+        int targetChannels = 0;
 
         try
         {
+            // First pass: determine target format (highest sample rate and max channels)
+            foreach (var file in inputFiles)
+            {
+                using var reader = OpenAudioFile(file);
+                targetSampleRate = Math.Max(targetSampleRate, reader.WaveFormat.SampleRate);
+                targetChannels = Math.Max(targetChannels, reader.WaveFormat.Channels);
+            }
+
+            if (targetSampleRate == 0)
+                throw new InvalidOperationException("Could not determine audio format");
+
+            // Second pass: normalize each file
             foreach (var file in inputFiles)
             {
                 var reader = OpenAudioFile(file);
-                
-                if (format == null)
-                {
-                    format = reader.WaveFormat;
-                }
-
                 var sampleProvider = reader.ToSampleProvider();
                 
+                // Convert to target channel count if needed
+                if (sampleProvider.WaveFormat.Channels != targetChannels)
+                {
+                    if (sampleProvider.WaveFormat.Channels == 1 && targetChannels == 2)
+                    {
+                        sampleProvider = new MonoToStereoSampleProvider(sampleProvider);
+                    }
+                    else if (sampleProvider.WaveFormat.Channels == 2 && targetChannels == 1)
+                    {
+                        sampleProvider = new StereoToMonoSampleProvider(sampleProvider);
+                    }
+                    else if (sampleProvider.WaveFormat.Channels > 2 && targetChannels == 2)
+                    {
+                        sampleProvider = new MultichannelToStereoSampleProvider(sampleProvider);
+                    }
+                }
+
+                // Resample if needed
+                if (sampleProvider.WaveFormat.SampleRate != targetSampleRate)
+                {
+                    sampleProvider = new WdlResamplingSampleProvider(sampleProvider, targetSampleRate);
+                }
+
                 // Find peak level
                 var samples = new List<float>();
-                float[] buffer = new float[format.SampleRate];
+                float[] buffer = new float[sampleProvider.WaveFormat.SampleRate * sampleProvider.WaveFormat.Channels];
                 int read;
                 while ((read = sampleProvider.Read(buffer, 0, buffer.Length)) > 0)
                 {
@@ -287,7 +343,32 @@ public class AudioStitcher
 
                 // Reset and apply gain
                 reader.Position = 0;
-                var gainProvider = new VolumeSampleProvider(reader.ToSampleProvider())
+                var resetProvider = reader.ToSampleProvider();
+                
+                // Re-apply channel conversion
+                if (resetProvider.WaveFormat.Channels != targetChannels)
+                {
+                    if (resetProvider.WaveFormat.Channels == 1 && targetChannels == 2)
+                    {
+                        resetProvider = new MonoToStereoSampleProvider(resetProvider);
+                    }
+                    else if (resetProvider.WaveFormat.Channels == 2 && targetChannels == 1)
+                    {
+                        resetProvider = new StereoToMonoSampleProvider(resetProvider);
+                    }
+                    else if (resetProvider.WaveFormat.Channels > 2 && targetChannels == 2)
+                    {
+                        resetProvider = new MultichannelToStereoSampleProvider(resetProvider);
+                    }
+                }
+
+                // Re-apply resampling
+                if (resetProvider.WaveFormat.SampleRate != targetSampleRate)
+                {
+                    resetProvider = new WdlResamplingSampleProvider(resetProvider, targetSampleRate);
+                }
+
+                var gainProvider = new VolumeSampleProvider(resetProvider)
                 {
                     Volume = gain
                 };
@@ -303,5 +384,50 @@ public class AudioStitcher
         {
             normalizedProviders.Clear();
         }
+    }
+}
+
+/// <summary>
+/// Converts multi-channel audio to stereo by taking the first two channels
+/// </summary>
+internal class MultichannelToStereoSampleProvider : ISampleProvider
+{
+    private readonly ISampleProvider source;
+    private readonly int sourceChannels;
+    private float[] sourceBuffer;
+
+    public MultichannelToStereoSampleProvider(ISampleProvider source)
+    {
+        if (source.WaveFormat.Channels < 2)
+            throw new ArgumentException("Source must have at least 2 channels");
+
+        this.source = source;
+        sourceChannels = source.WaveFormat.Channels;
+        WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(source.WaveFormat.SampleRate, 2);
+        sourceBuffer = new float[0];
+    }
+
+    public WaveFormat WaveFormat { get; }
+
+    public int Read(float[] buffer, int offset, int count)
+    {
+        int stereoSamplesNeeded = count / 2;
+        int sourceSamplesNeeded = stereoSamplesNeeded * sourceChannels;
+
+        if (sourceBuffer.Length < sourceSamplesNeeded)
+            sourceBuffer = new float[sourceSamplesNeeded];
+
+        int sourceSamplesRead = source.Read(sourceBuffer, 0, sourceSamplesNeeded);
+        int stereoSamplesRead = sourceSamplesRead / sourceChannels;
+
+        int outputIndex = offset;
+        for (int i = 0; i < stereoSamplesRead; i++)
+        {
+            int sourceIndex = i * sourceChannels;
+            buffer[outputIndex++] = sourceBuffer[sourceIndex];     // Left
+            buffer[outputIndex++] = sourceBuffer[sourceIndex + 1]; // Right
+        }
+
+        return stereoSamplesRead * 2;
     }
 }

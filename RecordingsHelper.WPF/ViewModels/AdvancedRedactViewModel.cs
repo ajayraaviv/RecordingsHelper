@@ -133,8 +133,14 @@ namespace RecordingsHelper.WPF.ViewModels
                         }
                     }
 
+                    // Remove duplicates based on AdjustedStart and AdjustedEnd
+                    var uniqueItems = allItems
+                        .GroupBy(item => new { item.Instance.AdjustedStart, item.Instance.AdjustedEnd })
+                        .Select(g => g.First())
+                        .ToList();
+
                     // Sort by start time and assign sequential IDs
-                    var sortedItems = allItems.OrderBy(item => item.StartTime).ToList();
+                    var sortedItems = uniqueItems.OrderBy(item => item.StartTime).ToList();
                     for (int i = 0; i < sortedItems.Count; i++)
                     {
                         sortedItems[i].Id = i + 1;
@@ -154,7 +160,7 @@ namespace RecordingsHelper.WPF.ViewModels
                         FilteredTranscriptItems.Add(item);
                     }
                     
-                    StatusMessage = $"Loaded {TranscriptItems.Count} transcript segments from {transcripts.Count} transcript entries";
+                    StatusMessage = $"Loaded {TranscriptItems.Count} unique transcript segments from {transcripts.Count} transcript entries";
                 }
                 catch (Exception ex)
                 {
