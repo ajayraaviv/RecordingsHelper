@@ -30,7 +30,15 @@ public class ZeroToVisibilityConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is int count)
-            return count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        {
+            // Check if parameter is "Inverse" to invert the logic
+            bool inverse = parameter?.ToString()?.Equals("Inverse", StringComparison.OrdinalIgnoreCase) ?? false;
+            
+            if (inverse)
+                return count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            else
+                return count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
         
         return Visibility.Collapsed;
     }

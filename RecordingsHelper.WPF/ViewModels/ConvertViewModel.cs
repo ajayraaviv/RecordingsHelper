@@ -48,9 +48,9 @@ public partial class ConvertViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "WAV Files (*.wav)|*.wav",
+            Filter = "Audio/Video Files (*.wav;*.mp3;*.mp4)|*.wav;*.mp3;*.mp4|All Files (*.*)|*.*",
             Multiselect = true,
-            Title = "Select WAV files to convert"
+            Title = "Select audio or MP4 files to convert"
         };
 
         if (dialog.ShowDialog() == true)
@@ -114,20 +114,39 @@ public partial class ConvertViewModel : ObservableObject
     {
         if (Files.Count == 0)
         {
-            MessageBox.Show("Please add WAV files to convert.", "No Files", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Please add files to convert.", "No Files", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(OutputFolder))
+        // For single file, use SaveFileDialog
+        if (Files.Count == 1)
         {
-            MessageBox.Show("Please select an output folder.", "No Output Folder", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+            var saveDialog = new SaveFileDialog
+            {
+                Filter = "MP3 Files (*.mp3)|*.mp3",
+                FileName = Path.GetFileNameWithoutExtension(Files[0].FileName) + ".mp3",
+                Title = "Save MP3 File"
+            };
 
-        if (!Directory.Exists(OutputFolder))
+            if (saveDialog.ShowDialog() != true)
+                return;
+
+            OutputFolder = Path.GetDirectoryName(saveDialog.FileName) ?? string.Empty;
+        }
+        else
         {
-            MessageBox.Show("Output folder does not exist.", "Invalid Folder", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
+            // For multiple files, require output folder
+            if (string.IsNullOrWhiteSpace(OutputFolder))
+            {
+                MessageBox.Show("Please select an output folder.", "No Output Folder", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!Directory.Exists(OutputFolder))
+            {
+                MessageBox.Show("Output folder does not exist.", "Invalid Folder", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
         }
 
         IsProcessing = true;
@@ -182,7 +201,17 @@ public partial class ConvertViewModel : ObservableObject
 
     private void ConvertWavToMp3(string inputPath, string outputFolder, int bitrate)
     {
-        var outputPath = Path.Combine(outputFolder, Path.GetFileNameWithoutExtension(inputPath) + ".mp3");
+        var outputFileName = Path.GetFileNameWithoutExtension(inputPath) + ".mp3";
+        var outputPath = Path.Combine(outputFolder, outputFileName);
+
+        // Handle file name conflicts
+        int counter = 1;
+        while (File.Exists(outputPath))
+        {
+            outputFileName = Path.GetFileNameWithoutExtension(inputPath) + $"-{counter}.mp3";
+            outputPath = Path.Combine(outputFolder, outputFileName);
+            counter++;
+        }
 
         using var reader = new AudioFileReader(inputPath);
         using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);

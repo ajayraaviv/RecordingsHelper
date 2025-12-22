@@ -403,6 +403,10 @@ FodyWeavers.xsd
 .AppleDouble
 .LSOverride
 
+# Settings files with API keys and secrets
+transcription-settings.json
+**/transcription-settings.json
+
 # Audio files for testing (optional - uncomment if you don't want to track test audio files)
 # *.mp3
 # *.wav

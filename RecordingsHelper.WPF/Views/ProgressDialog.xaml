@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="Processing" 
-        Height="200" 
+        Height="250" 
         Width="400"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
@@ -32,7 +32,15 @@
                         Height="4"
                         Margin="0,0,0,16"/>
             
-            <TextBlock Text="Please do not close this window"
+            <Button x:Name="CancelButton"
+                    Content="Cancel"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    HorizontalAlignment="Center"
+                    Click="CancelButton_Click"
+                    Margin="0,0,0,8"/>
+            
+            <TextBlock x:Name="CancelHintText"
+                       Text="Canceling will stop the transcription"
                        FontSize="12"
                        Opacity="0.6"
                        TextAlignment="Center"/>

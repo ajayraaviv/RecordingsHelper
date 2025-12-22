@@ -39,6 +39,11 @@
                            Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
                            VerticalAlignment="Center"
                            Margin="16,0,0,0"/>
+                <TextBlock Text="(WAV, MP3, MP4 supported)"
+                           Style="{StaticResource MaterialDesignBody2TextBlock}"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
                 <Border Background="#FFF59D" 
                         CornerRadius="12" 
                         Padding="8,4" 

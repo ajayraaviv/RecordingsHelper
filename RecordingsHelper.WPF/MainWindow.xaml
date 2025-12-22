@@ -79,6 +79,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- Merge Card -->
@@ -170,6 +171,42 @@
                                 </StackPanel>
                             </Button>
                         </materialDesign:Card>
+
+                        <!-- Transcription Card -->
+                        <materialDesign:Card Grid.Row="1" Grid.Column="2" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToTranscriptionCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Transcribe audio files using Azure AI Speech-to-Text. Get timestamps, speaker identification, and text transcription.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="MicrophoneMessage" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Audio Transcription" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Transcribe audio with Azure AI" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+
+                        <!-- Batch Transcription Card -->
+                        <materialDesign:Card Grid.Row="2" Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToBatchTranscriptionCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Submit multiple audio files for batch transcription. Upload files, check status, view and save transcripts individually.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="FormatListBulleted" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Batch Transcription" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Submit multiple files for transcription" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
                 </Grid>
             </StackPanel>
         </ScrollViewer>
@@ -193,6 +230,12 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:ConvertViewModel}">
                         <views:ConvertView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:TranscriptionViewModel}">
+                        <views:TranscriptionView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:BatchTranscriptionViewModel}">
+                        <views:BatchTranscriptionView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

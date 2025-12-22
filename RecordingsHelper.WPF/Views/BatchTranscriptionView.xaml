@@ -1,0 +1,339 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.BatchTranscriptionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:viewmodels="clr-namespace:RecordingsHelper.WPF.ViewModels"
+             xmlns:models="clr-namespace:RecordingsHelper.Core.Models;assembly=RecordingsHelper.Core"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             Background="{DynamicResource MaterialDesignPaper}">
+
+    <UserControl.DataContext>
+        <viewmodels:BatchTranscriptionViewModel/>
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:EqualityConverter x:Key="EqualityConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        
+        <!-- Status to Color Converter -->
+        <Style x:Key="StatusChip" TargetType="materialDesign:Chip">
+            <Setter Property="Margin" Value="4,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="NotStarted">
+                    <Setter Property="Background" Value="#E0E0E0"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Uploading">
+                    <Setter Property="Background" Value="#FFF9C4"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Submitted">
+                    <Setter Property="Background" Value="#BBDEFB"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Running">
+                    <Setter Property="Background" Value="#C5CAE9"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Succeeded">
+                    <Setter Property="Background" Value="#C8E6C9"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Failed">
+                    <Setter Property="Background" Value="#FFCDD2"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding OpenSettingsCommand}"
+                        ToolTip="Azure Speech Settings"
+                        Foreground="White"
+                        Margin="8,0,0,0">
+                    <materialDesign:PackIcon Kind="Cog" Width="24" Height="24"/>
+                </Button>
+                
+                <TextBlock Text="Batch Transcription" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Diarization Controls and Batch ID -->
+        <materialDesign:Card Grid.Row="1" Padding="16" Margin="16,16,16,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <CheckBox Content="Diarization"
+                              IsChecked="{Binding EnableDiarization}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,12,0"
+                              ToolTip="Identify different speakers"/>
+                    <TextBlock Text="Max Speakers:"
+                               Style="{StaticResource MaterialDesignBody2TextBlock}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <Slider Value="{Binding MaxSpeakers}"
+                            Minimum="2"
+                            Maximum="10"
+                            Width="120"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            AutoToolTipPlacement="TopLeft"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding MaxSpeakers}"
+                           VerticalAlignment="Center"
+                           MinWidth="15"/>
+            </StackPanel>
+            
+            <!-- Batch ID Display -->
+            <StackPanel Grid.Column="1" 
+                        Orientation="Horizontal" 
+                        VerticalAlignment="Center"
+                        Visibility="{Binding BatchTranscriptionId, Converter={StaticResource NullToVisibilityConverter}}">
+                <TextBlock Text="Batch ID:" 
+                           Style="{StaticResource MaterialDesignBody2TextBlock}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <Border Background="{DynamicResource MaterialDesignDivider}"
+                        CornerRadius="4"
+                        Padding="8,4">
+                    <TextBlock Text="{Binding BatchTranscriptionId}" 
+                               FontFamily="Consolas"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <Button Command="{Binding CopyBatchIdCommand}"
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="Copy Batch ID to clipboard"
+                        Width="32"
+                        Height="32"
+                        Margin="4,0,0,0">
+                    <materialDesign:PackIcon Kind="ContentCopy" Width="18" Height="18"/>
+                </Button>
+            </StackPanel>
+            </Grid>
+        </materialDesign:Card>
+
+        <!-- File Management Actions -->
+        <materialDesign:Card Grid.Row="2" Padding="12" Margin="16,16,16,16">
+            <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding AddFilesCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Plus" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="ADD FILES"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding SubmitAllCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        IsEnabled="{Binding IsSubmitting, Converter={StaticResource InverseBooleanConverter}}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Upload" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="SUBMIT ALL"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding CheckStatusAllCommand}"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Update" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="CHECK STATUS"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding ClearCompletedCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="CheckAll" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="CLEAR COMPLETED"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding ClearAllCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="DeleteSweep" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="CLEAR ALL"/>
+                    </StackPanel>
+                </Button>
+
+                <TextBlock Text="{Binding Items.Count, StringFormat='Total: {0} files'}"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"
+                           Style="{StaticResource MaterialDesignBody1TextBlock}"/>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- Files List -->
+        <materialDesign:Card Grid.Row="3" Margin="16,0,16,16">
+            <DataGrid ItemsSource="{Binding Items}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserReorderColumns="True"
+                      CanUserResizeRows="False"
+                      CanUserSortColumns="True"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      materialDesign:DataGridAssist.CellPadding="8"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="8">
+                
+                <DataGrid.Columns>
+                    <!-- File Name -->
+                    <DataGridTextColumn Header="File Name" 
+                                        Binding="{Binding FileName}"
+                                        Width="*"
+                                        IsReadOnly="True"/>
+
+                    <!-- Status -->
+                    <DataGridTemplateColumn Header="Status" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <materialDesign:Chip Content="{Binding Status}"
+                                                     Style="{StaticResource StatusChip}"
+                                                     IsEnabled="False"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Status Message -->
+                    <DataGridTemplateColumn Header="Message" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StatusMessage}"
+                                           ToolTip="{Binding ErrorMessage}"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Submitted At -->
+                    <DataGridTextColumn Header="Submitted" 
+                                        Binding="{Binding SubmittedAt, StringFormat='MM/dd/yy HH:mm'}"
+                                        Width="120"
+                                        IsReadOnly="True"/>
+
+                    <!-- Actions -->
+                    <DataGridTemplateColumn Header="Actions" Width="350">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Check Status Button -->
+                                    <Button Command="{Binding DataContext.CheckStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="8,4"
+                                            Margin="0,0,4,0"
+                                            ToolTip="Check transcription status">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Refresh" 
+                                                                     Width="16" Height="16"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,4,0"/>
+                                            <TextBlock Text="STATUS" FontSize="11"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- View Transcript Button -->
+                                    <Button Command="{Binding DataContext.ViewTranscriptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="8,4"
+                                            Margin="0,0,4,0"
+                                            ToolTip="View transcript">
+                                        <Button.IsEnabled>
+                                            <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                <Binding Path="Status"/>
+                                                <Binding Source="{x:Static models:BatchTranscriptionStatus.Succeeded}"/>
+                                            </MultiBinding>
+                                        </Button.IsEnabled>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="FileDocument" 
+                                                                     Width="16" Height="16"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,4,0"/>
+                                            <TextBlock Text="VIEW" FontSize="11"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Save Transcript Button -->
+                                    <Button Command="{Binding DataContext.SaveTranscriptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="8,4"
+                                            Margin="0,0,4,0"
+                                            ToolTip="Save transcript to file">
+                                        <Button.IsEnabled>
+                                            <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                <Binding Path="Status"/>
+                                                <Binding Source="{x:Static models:BatchTranscriptionStatus.Succeeded}"/>
+                                            </MultiBinding>
+                                        </Button.IsEnabled>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ContentSave" 
+                                                                     Width="16" Height="16"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="0,0,4,0"/>
+                                            <TextBlock Text="SAVE" FontSize="11"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Remove Button -->
+                                    <Button Command="{Binding DataContext.RemoveFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Padding="8,4"
+                                            ToolTip="Remove from list">
+                                        <materialDesign:PackIcon Kind="Delete" 
+                                                                 Width="16" Height="16"
+                                                                 Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"/>
+                                    </Button>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </materialDesign:Card>
+    </Grid>
+</UserControl>

@@ -13,6 +13,8 @@ public partial class MainViewModel : ObservableObject
     public SplitViewModel SplitViewModel { get; }
     public AdvancedRedactViewModel AdvancedRedactViewModel { get; }
     public ConvertViewModel ConvertViewModel { get; }
+    public TranscriptionViewModel TranscriptionViewModel { get; }
+    public BatchTranscriptionViewModel BatchTranscriptionViewModel { get; }
 
     public MainViewModel()
     {
@@ -21,6 +23,8 @@ public partial class MainViewModel : ObservableObject
         SplitViewModel = new SplitViewModel();
         AdvancedRedactViewModel = new AdvancedRedactViewModel();
         ConvertViewModel = new ConvertViewModel();
+        TranscriptionViewModel = new TranscriptionViewModel();
+        BatchTranscriptionViewModel = new BatchTranscriptionViewModel();
         CurrentView = null; // Home page by default
     }
 
@@ -52,6 +56,18 @@ public partial class MainViewModel : ObservableObject
     private void NavigateToConvert()
     {
         CurrentView = ConvertViewModel;
+    }
+
+    [RelayCommand]
+    private void NavigateToTranscription()
+    {
+        CurrentView = TranscriptionViewModel;
+    }
+
+    [RelayCommand]
+    private void NavigateToBatchTranscription()
+    {
+        CurrentView = BatchTranscriptionViewModel;
     }
 
     [RelayCommand]
