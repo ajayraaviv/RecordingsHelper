@@ -15,4 +15,7 @@ public class TranscriptionOptions
     
     // LLM-specific options (only used when UseLlmEnhancement = true)
     public string? LlmPrompt { get; set; }
+    
+    // Profanity filter mode: "None", "Masked", "Removed", "Tags"
+    public string ProfanityFilterMode { get; set; } = "Masked";
 }

@@ -26,6 +26,21 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
     private const string SettingsFileName = "transcription-settings.json";
     private CancellationTokenSource? _cancellationTokenSource;
 
+    private const string DefaultLlmPrompt = @"This is a Social Security Administration disability hearing conducted by the Office of Hearings Operations.
+The hearing is presided over by an Administrative Law Judge and follows formal SSA adjudication procedures.
+The Administrative Law Judge asks structured legal questions, provides instructions, and issues rulings on the record.
+The claimant provides testimony regarding impairments, symptoms, work history, and functional limitations and may speak informally or with hesitation.
+A vocational expert provides testimony regarding past relevant work, residual functional capacity, exertional levels, skill levels, SVP ratings, and DOT job classifications.
+A representative or attorney may be present and speaks using formal legal advocacy language.
+A medical expert may testify using clinical terminology related to diagnoses, impairments, and functional assessments.
+A hearing reporter may announce procedural statements and manage the official hearing record.
+An interpreter or translator may repeat or translate statements between languages as part of the hearing.
+Legal, medical, and vocational terminology should be transcribed precisely using standard SSA terminology.
+Questions and answers should remain distinct and clearly punctuated.
+Statements should use proper grammar and punctuation without altering the original meaning or intent.
+Pauses, partial sentences, clarifications, and corrections may occur and should be preserved as spoken.";
+
+
     [ObservableProperty]
     private string? _loadedFilePath;
 
@@ -97,6 +112,17 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _autoScrollEnabled = true;
 
+    [ObservableProperty]
+    private bool _uploadToBlobStorage = false;
+
+    [ObservableProperty]
+    private string? _blobUrl;
+
+    [ObservableProperty]
+    private string _profanityFilterMode = "Masked";
+
+    public string[] ProfanityFilterModes { get; } = new[] { "None", "Masked", "Removed", "Tags" };
+
     public Action<TranscriptionSegment>? ScrollToActiveSegment { get; set; }
 
     public int[] AvailableSpeakers { get; } = Enumerable.Range(1, 20).ToArray();
@@ -110,6 +136,9 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
             Interval = TimeSpan.FromMilliseconds(100)
         };
         _positionTimer.Tick += OnPositionTimerTick;
+
+        // Initialize LLM prompt with default
+        _llmPrompt = DefaultLlmPrompt;
 
         LoadSettings();
     }
@@ -163,6 +192,7 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
                 CurrentPosition = TimeSpan.Zero;
                 IsFileLoaded = true;
                 TranscriptionSegments.Clear();
+                BlobUrl = null;  // Clear blob URL when new file is loaded
                 StatusMessage = "File loaded successfully. Click 'Start Transcription' to begin.";
             }
             catch (Exception ex)
@@ -215,6 +245,16 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
         {
             _audioPlayer.Position = TimeSpan.FromSeconds(position);
             CurrentPosition = TimeSpan.FromSeconds(position);
+        }
+    }
+
+    [RelayCommand]
+    private void CopyBlobUrl()
+    {
+        if (!string.IsNullOrEmpty(BlobUrl))
+        {
+            Clipboard.SetText(BlobUrl);
+            StatusMessage = "Blob URL copied to clipboard";
         }
     }
 
@@ -329,21 +369,70 @@ public partial class TranscriptionViewModel : ObservableObject, IDisposable
                 });
             });
 
+            // Upload to blob storage if requested
+            if (UploadToBlobStorage && !string.IsNullOrWhiteSpace(BlobUrl))
+            {
+                StatusMessage = "Using existing blob URL...";
+            }
+            else if (UploadToBlobStorage)
+            {
+                if (string.IsNullOrWhiteSpace(Settings.StorageAccountName) || 
+                    string.IsNullOrWhiteSpace(Settings.StorageAccountKey) ||
+                    string.IsNullOrWhiteSpace(Settings.StorageContainerName))
+                {
+                    MessageBox.Show("Please configure storage account settings first.", "Storage Settings Required",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    OpenSettings();
+                    return;
+                }
+
+                StatusMessage = "Uploading to blob storage...";
+                var uploadFolder = "fasttranscription";
+                
+                BlobUrl = await _transcriptionService.UploadToBlobStorageAsync(
+                    LoadedFilePath,
+                    Settings.StorageAccountName,
+                    Settings.StorageAccountKey,
+                    Settings.StorageContainerName,
+                    uploadFolder,
+                    _cancellationTokenSource.Token);
+                
+                StatusMessage = $"Uploaded to storage. Using blob URL for transcription.";
+            }
+
             var options = new Core.Models.TranscriptionOptions
             {
                 Mode = Core.Models.TranscriptionMode.Fast,
                 UseLlmEnhancement = UseLlmEnhancement,
                 EnableDiarization = EnableDiarization,
                 MaxSpeakers = MaxSpeakers,
-                LlmPrompt = LlmPrompt
+                LlmPrompt = UseLlmEnhancement ? LlmPrompt : null,
+                ProfanityFilterMode = ProfanityFilterMode
             };
 
-            var segments = await _transcriptionService.TranscribeAudioAsync(
-                LoadedFilePath,
-                Settings,
-                options,
-                progressReporter,
-                _cancellationTokenSource.Token);
+            List<TranscriptionSegment> segments;
+            
+            if (UploadToBlobStorage && !string.IsNullOrWhiteSpace(BlobUrl))
+            {
+                // Use blob URL for transcription
+                segments = await _transcriptionService.TranscribeAudioFromBlobAsync(
+                    BlobUrl,
+                    LoadedFilePath,
+                    Settings,
+                    options,
+                    progressReporter,
+                    _cancellationTokenSource.Token);
+            }
+            else
+            {
+                // Traditional file upload
+                segments = await _transcriptionService.TranscribeAudioAsync(
+                    LoadedFilePath,
+                    Settings,
+                    options,
+                    progressReporter,
+                    _cancellationTokenSource.Token);
+            }
 
             Application.Current.Dispatcher.Invoke(() =>
             {

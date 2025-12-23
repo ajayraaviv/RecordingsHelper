@@ -24,7 +24,9 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
         {
             InitializeComponent();
             
-            if (!string.IsNullOrWhiteSpace(initialPrompt))
+            // Always use the provided prompt, even if empty
+            // Only use default if null (first time)
+            if (initialPrompt != null)
             {
                 PromptTextBox.Text = initialPrompt;
             }
@@ -46,13 +48,6 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             PromptText = PromptTextBox.Text?.Trim() ?? string.Empty;
-            
-            if (string.IsNullOrWhiteSpace(PromptText))
-            {
-                MessageBox.Show("Please enter a prompt.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            
             DialogResult = true;
             Close();
         }

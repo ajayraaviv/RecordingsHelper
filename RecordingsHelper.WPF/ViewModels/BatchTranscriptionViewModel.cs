@@ -37,6 +37,11 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     private int _maxSpeakers = 6;
 
     [ObservableProperty]
+    private string _profanityFilterMode = "Masked";
+
+    public string[] ProfanityFilterModes { get; } = new[] { "None", "Masked", "Removed", "Tags" };
+
+    [ObservableProperty]
     private bool _isSubmitting;
 
     public BatchTranscriptionViewModel()
@@ -193,7 +198,8 @@ public partial class BatchTranscriptionViewModel : ObservableObject
             {
                 Mode = TranscriptionMode.Batch,
                 EnableDiarization = EnableDiarization,
-                MaxSpeakers = MaxSpeakers
+                MaxSpeakers = MaxSpeakers,
+                ProfanityFilterMode = ProfanityFilterMode
             };
 
             BatchTranscriptionId = await _transcriptionService.CreateBatchTranscriptionWithUrlsAsync(

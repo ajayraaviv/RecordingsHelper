@@ -49,6 +49,202 @@ public class TranscriptionService
         return await TranscribeFastAsync(audioFilePath, settings, options, progress, cancellationToken);
     }
 
+    /// <summary>
+    /// Transcribes audio using a blob URL instead of uploading the file
+    /// </summary>
+    public async Task<List<TranscriptionSegment>> TranscribeAudioFromBlobAsync(
+        string blobUrl,
+        string audioFilePath,
+        TranscriptionSettings settings,
+        TranscriptionOptions options,
+        IProgress<TranscriptionProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(settings.SubscriptionKey))
+            throw new ArgumentException("Subscription key is required.", nameof(settings));
+
+        if (string.IsNullOrWhiteSpace(settings.Region))
+            throw new ArgumentException("Region is required.", nameof(settings));
+
+        progress?.Report(new TranscriptionProgress
+        {
+            ProgressPercentage = 10,
+            SegmentsRecognized = 0,
+            Message = "Preparing transcription request..."
+        });
+
+        // Use the transcriptions:transcribe API with blob URL
+        var url = $"https://{settings.Region}.api.cognitive.microsoft.com/speechtotext/transcriptions:transcribe?api-version=2025-10-15";
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Add("Ocp-Apim-Subscription-Key", settings.SubscriptionKey);
+
+        // Build multipart form data with definition containing audioUrl
+        using var content = new MultipartFormDataContent();
+
+        // Build definition JSON with audioUrl inside (per Microsoft docs)
+        var supportsEnhancedMode = new[] { "eastus", "westus", "centralindia", "northeurope", "southeastasia" }
+            .Contains(settings.Region?.ToLowerInvariant());
+
+        var definition = new
+        {
+            audioUrl = blobUrl,
+            locales = new[] { settings.Language },
+            profanityFilterMode = options.ProfanityFilterMode,
+            diarization = options.EnableDiarization ? new
+            {
+                enabled = true,
+                maxSpeakers = options.MaxSpeakers,
+                minSpeakers = 1
+            } : null,
+            enhancedMode = supportsEnhancedMode && options.UseLlmEnhancement ? new
+            {
+                enabled = true,
+                task = "transcribe",
+                prompt = (options.LlmPrompt ?? "").Trim()
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(line => line.Trim())
+                    .Where(line => !string.IsNullOrWhiteSpace(line))
+                    .ToArray()
+            } : null
+        };
+
+        var definitionJson = JsonSerializer.Serialize(definition, new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        });
+
+        System.Diagnostics.Debug.WriteLine($"Transcription Definition (Blob URL): {definitionJson}");
+
+        var definitionContent = new StringContent(definitionJson, System.Text.Encoding.UTF8, "application/json");
+        content.Add(definitionContent, "definition");
+        request.Content = content;
+
+        progress?.Report(new TranscriptionProgress
+        {
+            ProgressPercentage = 30,
+            SegmentsRecognized = 0,
+            Message = "Sending request to Azure Speech service..."
+        });
+
+        // Send request
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            System.Diagnostics.Debug.WriteLine($"Speech API Error Response: {errorContent}");
+            throw new Exception($"Speech API error: {response.StatusCode} - {errorContent}");
+        }
+
+        progress?.Report(new TranscriptionProgress
+        {
+            ProgressPercentage = 70,
+            SegmentsRecognized = 0,
+            Message = "Processing transcription results..."
+        });
+
+        // Parse response (same as file upload)
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        System.Diagnostics.Debug.WriteLine($"Transcription Response: {responseJson}");
+        
+        var segments = ParseTranscriptionResponse(responseJson, audioFilePath);
+        
+        progress?.Report(new TranscriptionProgress
+        {
+            ProgressPercentage = 100,
+            SegmentsRecognized = segments.Count,
+            Message = $"Transcription completed. {segments.Count} segments found."
+        });
+
+        return segments;
+    }
+
+    private List<TranscriptionSegment> ParseTranscriptionResponse(string responseJson, string audioFilePath)
+    {
+        var segments = new List<TranscriptionSegment>();
+        
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(responseJson);
+            var root = jsonDoc.RootElement;
+            
+            // Try to parse phrases array first (detailed results)
+            if (root.TryGetProperty("phrases", out var phrasesElement) && phrasesElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var phrase in phrasesElement.EnumerateArray())
+                {
+                    var text = phrase.TryGetProperty("text", out var t) ? t.GetString() : string.Empty;
+                    var offset = phrase.TryGetProperty("offsetMilliseconds", out var o) ? o.GetInt32() : 0;
+                    var duration = phrase.TryGetProperty("durationMilliseconds", out var d) ? d.GetInt32() : 0;
+                    var confidence = phrase.TryGetProperty("confidence", out var c) ? c.GetDouble() : 0.0;
+                    
+                    string speaker = "Speaker 1";
+                    if (phrase.TryGetProperty("speaker", out var s))
+                    {
+                        int speakerNum = s.GetInt32();
+                        speaker = $"Speaker {speakerNum}";
+                    }
+                    
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        segments.Add(new TranscriptionSegment
+                        {
+                            StartTime = TimeSpan.FromMilliseconds(offset),
+                            EndTime = TimeSpan.FromMilliseconds(offset + duration),
+                            Text = text,
+                            Speaker = speaker,
+                            Confidence = confidence
+                        });
+                    }
+                }
+            }
+            
+            // If no phrases, try combinedPhrases
+            if (segments.Count == 0 && root.TryGetProperty("combinedPhrases", out var combinedElement) && combinedElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var combined in combinedElement.EnumerateArray())
+                {
+                    var text = combined.TryGetProperty("text", out var t) ? t.GetString() : string.Empty;
+                    
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        segments.Add(new TranscriptionSegment
+                        {
+                            StartTime = TimeSpan.Zero,
+                            EndTime = GetAudioDuration(audioFilePath),
+                            Text = text,
+                            Speaker = "Speaker 1",
+                            Confidence = 1.0
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error parsing transcription: {ex.Message}");
+            throw new Exception($"Failed to parse transcription response: {ex.Message}");
+        }
+        
+        if (segments.Count == 0)
+        {
+            return new List<TranscriptionSegment>();
+        }
+
+        // Merge adjacent segments from the same speaker
+        var mergedSegments = MergeAdjacentSegments(segments);
+        
+        // Normalize first segment to start at 0 and last segment to end at audio duration
+        if (mergedSegments.Count > 0)
+        {
+            mergedSegments[0].StartTime = TimeSpan.Zero;
+            mergedSegments[^1].EndTime = GetAudioDuration(audioFilePath);
+        }
+
+        return mergedSegments;
+    }
+
     private async Task<List<TranscriptionSegment>> TranscribeFastAsync(
         string audioFilePath,
         TranscriptionSettings settings,
@@ -98,18 +294,18 @@ public class TranscriptionService
         var definition = new
         {
             locales = new[] { settings.Language },
-            profanityFilterMode = "Masked",
+            profanityFilterMode = options.ProfanityFilterMode,
             diarization = options.EnableDiarization ? new
             {
                 enabled = true,
                 maxSpeakers = options.MaxSpeakers,
                 minSpeakers = 1
             } : null,
-            enhancedMode = supportsEnhancedMode && options.UseLlmEnhancement && !string.IsNullOrWhiteSpace(options.LlmPrompt) ? new
+            enhancedMode = supportsEnhancedMode && options.UseLlmEnhancement ? new
             {
                 enabled = true,
                 task = "transcribe",
-                prompt = options.LlmPrompt
+                prompt = (options.LlmPrompt ?? "").Trim()
                     .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(line => line.Trim())
                     .Where(line => !string.IsNullOrWhiteSpace(line))
@@ -155,105 +351,18 @@ public class TranscriptionService
 
         // Parse response
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        
-        // Log the response for debugging
         System.Diagnostics.Debug.WriteLine($"Transcription Response: {responseJson}");
         
-        var segments = new List<TranscriptionSegment>();
+        var segments = ParseTranscriptionResponse(responseJson, audioFilePath);
         
-        try
-        {
-            var jsonDoc = JsonDocument.Parse(responseJson);
-            var root = jsonDoc.RootElement;
-            
-            // Try to parse phrases array first (detailed results)
-            if (root.TryGetProperty("phrases", out var phrasesElement) && phrasesElement.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var phrase in phrasesElement.EnumerateArray())
-                {
-                    var text = phrase.TryGetProperty("text", out var t) ? t.GetString() : string.Empty;
-                    var offset = phrase.TryGetProperty("offsetMilliseconds", out var o) ? o.GetInt32() : 0;
-                    var duration = phrase.TryGetProperty("durationMilliseconds", out var d) ? d.GetInt32() : 0;
-                    var confidence = phrase.TryGetProperty("confidence", out var c) ? c.GetDouble() : 0.0;
-                    
-                    // Speaker is already 1-based (1, 2, 3, etc.) when diarization is enabled
-                    string speaker = "Speaker 1"; // Default when no diarization
-                    if (phrase.TryGetProperty("speaker", out var s))
-                    {
-                        int speakerNum = s.GetInt32();
-                        speaker = $"Speaker {speakerNum}"; // Use as-is (already 1-based)
-                    }
-                    
-                    if (!string.IsNullOrWhiteSpace(text))
-                    {
-                        segments.Add(new TranscriptionSegment
-                        {
-                            StartTime = TimeSpan.FromMilliseconds(offset),
-                            EndTime = TimeSpan.FromMilliseconds(offset + duration),
-                            Text = text,
-                            Speaker = speaker,
-                            Confidence = confidence
-                        });
-                    }
-                }
-            }
-            
-            // If no phrases, try combinedPhrases
-            if (segments.Count == 0 && root.TryGetProperty("combinedPhrases", out var combinedElement) && combinedElement.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var combined in combinedElement.EnumerateArray())
-                {
-                    var text = combined.TryGetProperty("text", out var t) ? t.GetString() : string.Empty;
-                    
-                    if (!string.IsNullOrWhiteSpace(text))
-                    {
-                        segments.Add(new TranscriptionSegment
-                        {
-                            StartTime = TimeSpan.Zero,
-                            EndTime = GetAudioDuration(audioFilePath),
-                            Text = text,
-                            Speaker = "Speaker 1",
-                            Confidence = 1.0
-                        });
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error parsing transcription: {ex.Message}");
-            throw new Exception($"Failed to parse transcription response: {ex.Message}");
-        }
-        
-        if (segments.Count == 0)
-        {
-            progress?.Report(new TranscriptionProgress
-            {
-                ProgressPercentage = 100,
-                SegmentsRecognized = 0,
-                Message = "No transcription results found."
-            });
-            return new List<TranscriptionSegment>();
-        }
-
-        // Merge adjacent segments from the same speaker
-        var mergedSegments = MergeAdjacentSegments(segments);
-        
-        // Normalize first segment to start at 0 and last segment to end at audio duration
-        if (mergedSegments.Count > 0)
-        {
-            mergedSegments[0].StartTime = TimeSpan.Zero;
-            mergedSegments[^1].EndTime = GetAudioDuration(audioFilePath);
-        }
-
         progress?.Report(new TranscriptionProgress
         {
             ProgressPercentage = 100,
-            SegmentsRecognized = mergedSegments.Count,
-            Message = $"Transcription completed. {mergedSegments.Count} segments found."
+            SegmentsRecognized = segments.Count,
+            Message = $"Transcription completed. {segments.Count} segments found."
         });
 
-        return mergedSegments;
+        return segments;
     }
 
     private List<TranscriptionSegment> MergeAdjacentSegments(List<TranscriptionSegment> segments)
@@ -422,7 +531,7 @@ public class TranscriptionService
         var definition = new
         {
             locales = new[] { language },
-            profanityFilterMode = "Masked",
+            profanityFilterMode = options.ProfanityFilterMode,
             diarization = options.EnableDiarization ? new
             {
                 enabled = true,
@@ -804,7 +913,7 @@ public class TranscriptionService
                     diarizationEnabled = true,
                     wordLevelTimestampsEnabled = true,
                     punctuationMode = "DictatedAndAutomatic",
-                    profanityFilterMode = "Masked",
+                    profanityFilterMode = options.ProfanityFilterMode,
                     diarization = new
                     {
                         speakers = new
@@ -827,7 +936,7 @@ public class TranscriptionService
                 {
                     wordLevelTimestampsEnabled = true,
                     punctuationMode = "DictatedAndAutomatic",
-                    profanityFilterMode = "Masked"
+                    profanityFilterMode = options.ProfanityFilterMode
                 }
             };
         }

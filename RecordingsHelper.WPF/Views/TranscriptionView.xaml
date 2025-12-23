@@ -18,6 +18,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <converters:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
     </UserControl.Resources>
 
     <Grid>
@@ -103,7 +104,7 @@
                         </Button>
                     </Grid>
 
-                    <!-- Diarization -->
+                    <!-- Diarization and Profanity Filter -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                         <CheckBox Content="Diarization"
                                   IsChecked="{Binding EnableDiarization}"
@@ -125,7 +126,19 @@
                                 Margin="0,0,8,0"/>
                         <TextBlock Text="{Binding MaxSpeakers}"
                                    VerticalAlignment="Center"
-                                   MinWidth="15"/>
+                                   MinWidth="15"
+                                   Margin="0,0,24,0"/>
+                        
+                        <!-- Profanity Filter -->
+                        <TextBlock Text="Profanity Filter:"
+                                   Style="{StaticResource MaterialDesignBody2TextBlock}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"/>
+                        <ComboBox ItemsSource="{Binding ProfanityFilterModes}"
+                                  SelectedItem="{Binding ProfanityFilterMode}"
+                                  MinWidth="100"
+                                  VerticalAlignment="Center"
+                                  ToolTip="None: No filtering | Masked: Replace with asterisks | Removed: Remove from result | Tags: Add profanity tags"/>
                     </StackPanel>
 
                     <!-- LLM Enhancement -->
@@ -150,6 +163,35 @@
                                                          Margin="0,0,4,0"/>
                                 <TextBlock Text="Configure Prompt" VerticalAlignment="Center"/>
                             </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Blob Storage Upload -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <CheckBox Content="Upload to Blob Storage"
+                                  IsChecked="{Binding UploadToBlobStorage}"
+                                  VerticalAlignment="Center"
+                                  ToolTip="Upload file to Azure Blob Storage (allows reuse for batch transcription)"/>
+                        
+                        <TextBlock Text="{Binding BlobUrl, StringFormat='Blob URL: {0}'}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="250"
+                                   ToolTip="{Binding BlobUrl}"
+                                   Visibility="{Binding BlobUrl, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        
+                        <Button Command="{Binding CopyBlobUrlCommand}"
+                                Style="{StaticResource MaterialDesignIconButton}"
+                                ToolTip="Copy blob URL to clipboard"
+                                Width="24"
+                                Height="24"
+                                Padding="0"
+                                Margin="4,0,0,0"
+                                Visibility="{Binding BlobUrl, Converter={StaticResource NullToVisibilityConverter}}">
+                            <materialDesign:PackIcon Kind="ContentCopy" Width="14" Height="14"/>
                         </Button>
                     </StackPanel>
 

@@ -107,7 +107,19 @@
                             Margin="0,0,8,0"/>
                 <TextBlock Text="{Binding MaxSpeakers}"
                            VerticalAlignment="Center"
-                           MinWidth="15"/>
+                           MinWidth="15"
+                           Margin="0,0,24,0"/>
+                
+                <!-- Profanity Filter -->
+                <TextBlock Text="Profanity Filter:"
+                           Style="{StaticResource MaterialDesignBody2TextBlock}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <ComboBox ItemsSource="{Binding ProfanityFilterModes}"
+                          SelectedItem="{Binding ProfanityFilterMode}"
+                          MinWidth="100"
+                          VerticalAlignment="Center"
+                          ToolTip="None: No filtering | Masked: Replace with asterisks | Removed: Remove from result | Tags: Add profanity tags"/>
             </StackPanel>
             
             <!-- Batch ID Display -->
