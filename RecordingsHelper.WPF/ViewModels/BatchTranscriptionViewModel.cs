@@ -528,7 +528,8 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                 {
                     var json = JsonSerializer.Serialize(item.Segments, new JsonSerializerOptions
                     {
-                        WriteIndented = true
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                     });
                     await File.WriteAllTextAsync(saveFileDialog.FileName, json);
                 }
@@ -619,5 +620,13 @@ public partial class BatchTranscriptionViewModel : ObservableObject
         {
             // Ignore settings save errors
         }
+    }
+
+    public void Cleanup()
+    {
+        // Reset state to initial values
+        Items.Clear();
+        BatchTranscriptionId = string.Empty;
+        IsSubmitting = false;
     }
 }

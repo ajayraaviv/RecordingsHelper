@@ -52,11 +52,14 @@ public class AudioPlayerService : IDisposable
 
     public void Stop()
     {
-        _waveOut?.Stop();
-        _waveOut?.Dispose();
-        _audioFileReader?.Dispose();
-        _waveOut = null;
-        _audioFileReader = null;
+        if (_waveOut != null)
+        {
+            _waveOut.Stop();
+            if (_audioFileReader != null)
+            {
+                _audioFileReader.CurrentTime = TimeSpan.Zero;
+            }
+        }
     }
 
     private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
@@ -66,6 +69,10 @@ public class AudioPlayerService : IDisposable
 
     public void Dispose()
     {
-        Stop();
+        _waveOut?.Stop();
+        _waveOut?.Dispose();
+        _audioFileReader?.Dispose();
+        _waveOut = null;
+        _audioFileReader = null;
     }
 }

@@ -154,3 +154,41 @@ public class EqualityConverter : IMultiValueConverter
         throw new NotImplementedException();
     }
 }
+
+public class BoolToGridLengthConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values.Length > 0 && values[0] is bool isCollapsed)
+        {
+            return isCollapsed ? new GridLength(40) : new GridLength(1, GridUnitType.Star);
+        }
+        return new GridLength(1, GridUnitType.Star);
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class SecondsToTimeStringConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is double seconds)
+        {
+            var timeSpan = TimeSpan.FromSeconds(seconds);
+            // Smart formatting: show hours only if >= 1 hour
+            if (timeSpan.TotalHours >= 1)
+                return timeSpan.ToString(@"hh\:mm\:ss\.fff");
+            return timeSpan.ToString(@"mm\:ss\.fff");
+        }
+        return "00:00.000";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

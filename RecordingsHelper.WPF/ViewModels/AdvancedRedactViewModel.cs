@@ -102,6 +102,19 @@ namespace RecordingsHelper.WPF.ViewModels
 
         public ObservableCollection<TranscriptItemViewModel> TranscriptItems { get; } = new();
 
+        public void Cleanup()
+        {
+            // Cancel any ongoing search
+            _searchCts?.Cancel();
+            _searchCts?.Dispose();
+            _searchCts = null;
+
+            // Reset state
+            SearchText = string.Empty;
+            FilteredTranscriptItems.Clear();
+            TranscriptItems.Clear();
+        }
+
         [RelayCommand]
         private void LoadAudioFile()
         {

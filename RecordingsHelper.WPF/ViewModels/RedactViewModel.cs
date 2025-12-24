@@ -268,25 +268,24 @@ public partial class RedactViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void Play()
+    private void PlayPause()
     {
         if (!IsFileLoaded) return;
 
-        _audioPlayer.Play();
-        IsPlaying = true;
-        IsPaused = false;
-        _positionTimer.Start();
-    }
-
-    [RelayCommand]
-    private void Pause()
-    {
-        if (!IsFileLoaded) return;
-
-        _audioPlayer.Pause();
-        IsPlaying = false;
-        IsPaused = true;
-        _positionTimer.Stop();
+        if (IsPlaying)
+        {
+            _audioPlayer.Pause();
+            IsPlaying = false;
+            IsPaused = true;
+            _positionTimer.Stop();
+        }
+        else
+        {
+            _audioPlayer.Play();
+            IsPlaying = true;
+            IsPaused = false;
+            _positionTimer.Start();
+        }
     }
 
     [RelayCommand]
@@ -598,6 +597,30 @@ public partial class RedactViewModel : ObservableObject, IDisposable
         {
             writer.Write(buffer, 0, bytesRead);
         }
+    }
+
+    public void Cleanup()
+    {
+        // Stop audio playback
+        if (IsPlaying)
+        {
+            _audioPlayer.Stop();
+            IsPlaying = false;
+            _positionTimer.Stop();
+        }
+
+        // Reset state
+        LoadedFilePath = null;
+        LoadedFileName = string.Empty;
+        IsFileLoaded = false;
+        IsPaused = false;
+        RedactionSegments.Clear();
+        CurrentPosition = TimeSpan.Zero;
+        SliderPosition = 0;
+        NewSegmentStart = TimeSpan.Zero;
+        NewSegmentEnd = TimeSpan.Zero;
+        StartTimeText = "00:00.000";
+        EndTimeText = "00:00.000";
     }
 
     public void Dispose()

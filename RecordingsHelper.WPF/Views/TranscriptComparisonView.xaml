@@ -1,0 +1,181 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.TranscriptComparisonView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RecordingsHelper.WPF.Views"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1200">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+    </UserControl.InputBindings>
+    
+    <UserControl.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <converters:BoolToGridLengthConverter x:Key="BoolToGridLengthConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="12">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"/>
+                </Button>
+                
+                <Border DockPanel.Dock="Right"
+                        Background="#FFF59D"
+                        CornerRadius="12"
+                        Padding="8,4"
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Flask" 
+                                                 Width="16" 
+                                                 Height="16" 
+                                                 VerticalAlignment="Center"
+                                                 Foreground="#F57F17"
+                                                 Margin="0,0,4,0"/>
+                        <TextBlock Text="EXPERIMENTAL" 
+                                   FontWeight="Bold" 
+                                   FontSize="11"
+                                   Foreground="#F57F17"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <TextBlock Text="Transcript Comparison" 
+                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="12,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Audio Player Section -->
+        <materialDesign:Card Grid.Row="1" Padding="12" Margin="12,12,12,8">
+            <StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="Audio Player" 
+                               Style="{StaticResource MaterialDesignSubtitle1TextBlock}" 
+                               VerticalAlignment="Center"/>
+                    
+                    <Button Command="{Binding LoadAudioFileCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderMusic" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="Load Audio File"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- File Info -->
+                <TextBlock Text="{Binding LoadedFileName}" 
+                           Style="{StaticResource MaterialDesignBody2TextBlock}"
+                           Margin="0,0,0,8"
+                           Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Audio Controls -->
+                <Grid Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Play/Pause/Stop Buttons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,16,0">
+                        <Button Command="{Binding PlayPauseCommand}"
+                                Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                ToolTip="Play/Pause"
+                                Margin="0,0,8,0">
+                            <materialDesign:PackIcon>
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="Play"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Kind" Value="Pause"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                        </Button>
+                        <Button Command="{Binding StopCommand}"
+                                Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                ToolTip="Stop">
+                            <materialDesign:PackIcon Kind="Stop" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Time Slider -->
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Slider Grid.Row="0"
+                                Minimum="0"
+                                Maximum="{Binding TotalDuration.TotalMilliseconds}"
+                                Value="{Binding SliderPosition, Mode=TwoWay}"
+                                VerticalAlignment="Center"
+                                Margin="0,0,0,4"/>
+
+                        <Grid Grid.Row="1">
+                            <TextBlock Text="{Binding CurrentPosition, Converter={StaticResource TimeSpanToStringConverter}}"
+                                       Style="{StaticResource MaterialDesignBody2TextBlock}"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                       Style="{StaticResource MaterialDesignBody2TextBlock}"
+                                       HorizontalAlignment="Right"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </StackPanel>
+        </materialDesign:Card>
+
+        <!-- Split Screen Transcript Comparison -->
+        <Grid x:Name="TranscriptGrid" Grid.Row="2" Margin="12,8,12,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="40"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="40"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Transcript Panel -->
+            <local:TranscriptPanel Grid.Column="0" DataContext="{Binding LeftPanel}" />
+
+            <!-- Resizable Divider -->
+            <GridSplitter Grid.Column="1" 
+                          Width="8" 
+                          HorizontalAlignment="Center" 
+                          VerticalAlignment="Stretch"
+                          Background="{DynamicResource MaterialDesignDivider}"
+                          ResizeBehavior="PreviousAndNext"
+                          ShowsPreview="True"
+                          Margin="2,0"/>
+
+            <!-- Right Transcript Panel -->
+            <local:TranscriptPanel Grid.Column="2" DataContext="{Binding RightPanel}" />
+        </Grid>
+    </Grid>
+</UserControl>

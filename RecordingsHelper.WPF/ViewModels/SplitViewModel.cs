@@ -154,25 +154,24 @@ public partial class SplitViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Play()
+    private void PlayPause()
     {
         if (!IsFileLoaded) return;
 
-        _audioPlayer.Play();
-        IsPlaying = true;
-        IsPaused = false;
-        _positionTimer.Start();
-    }
-
-    [RelayCommand]
-    private void Pause()
-    {
-        if (!IsPlaying) return;
-
-        _audioPlayer.Pause();
-        IsPlaying = false;
-        IsPaused = true;
-        _positionTimer.Stop();
+        if (IsPlaying)
+        {
+            _audioPlayer.Pause();
+            IsPlaying = false;
+            IsPaused = true;
+            _positionTimer.Stop();
+        }
+        else
+        {
+            _audioPlayer.Play();
+            IsPlaying = true;
+            IsPaused = false;
+            _positionTimer.Start();
+        }
     }
 
     [RelayCommand]
@@ -431,5 +430,26 @@ public partial class SplitViewModel : ObservableObject
             return timeSpan;
 
         return TimeSpan.Zero;
+    }
+
+    public void Cleanup()
+    {
+        // Stop audio playback
+        if (IsPlaying)
+        {
+            _audioPlayer.Stop();
+            IsPlaying = false;
+            _positionTimer.Stop();
+        }
+
+        // Reset state
+        LoadedFilePath = null;
+        LoadedFileName = string.Empty;
+        IsFileLoaded = false;
+        IsPaused = false;
+        SplitPoints.Clear();
+        CurrentPosition = TimeSpan.Zero;
+        SliderPosition = 0;
+        TotalDuration = TimeSpan.Zero;
     }
 }

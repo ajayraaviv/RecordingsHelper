@@ -203,6 +203,13 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
     }
 
     [RelayCommand]
+    private void Clear()
+    {
+        Cleanup();
+        StatusMessage = "Ready. Load an audio file to begin.";
+    }
+
+    [RelayCommand]
     private void PlayPause()
     {
         if (LoadedFilePath == null) return;
@@ -224,6 +231,18 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
             IsPlaying = true;
             IsPaused = false;
             _positionTimer.Start();
+        }
+    }
+
+    partial void OnSliderPositionChanged(double value)
+    {
+        if (!IsFileLoaded) return;
+
+        var newPosition = TimeSpan.FromSeconds(value);
+        if (Math.Abs((newPosition - CurrentPosition).TotalMilliseconds) > 200)
+        {
+            _audioPlayer.Position = newPosition;
+            CurrentPosition = newPosition;
         }
     }
 
@@ -579,6 +598,35 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
             MessageBox.Show($"Error saving settings: {ex.Message}", "Error", 
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    public void Cleanup()
+    {
+        // Stop audio playback
+        if (IsPlaying)
+        {
+            _audioPlayer.Stop();
+            IsPlaying = false;
+            _positionTimer.Stop();
+        }
+
+        // Cancel any ongoing transcription
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
+
+        // Reset state
+        LoadedFilePath = null;
+        LoadedFileName = string.Empty;
+        IsFileLoaded = false;
+        IsTranscribing = false;
+        TranscriptionSegments.Clear();
+        BlobUrl = null;
+        TranscriptionProgress = 0;
+        CurrentPosition = TimeSpan.Zero;
+        SliderPosition = 0;
+        StatusMessage = string.Empty;
+        ActiveSegment = null;
     }
 
     public void Dispose()

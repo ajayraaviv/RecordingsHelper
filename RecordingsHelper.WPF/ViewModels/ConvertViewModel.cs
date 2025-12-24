@@ -217,6 +217,18 @@ public partial class ConvertViewModel : ObservableObject
         using var writer = new LameMP3FileWriter(outputPath, reader.WaveFormat, bitrate);
         reader.CopyTo(writer);
     }
+
+    public void Cleanup()
+    {
+        // Reset state
+        Files.Clear();
+        IsProcessing = false;
+        StatusMessage = string.Empty;
+        Progress = 0;
+        TotalFiles = 0;
+        ProcessedFiles = 0;
+        OutputFolder = string.Empty;
+    }
 }
 
 public partial class ConversionItem : ObservableObject

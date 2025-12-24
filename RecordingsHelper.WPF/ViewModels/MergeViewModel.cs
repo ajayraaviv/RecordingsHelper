@@ -276,6 +276,16 @@ public partial class MergeViewModel : ObservableObject
         StatusMessage = "Ready to merge new files";
     }
 
+    public void Cleanup()
+    {
+        // Reset state
+        AudioFiles.Clear();
+        IsProcessing = false;
+        StatusMessage = string.Empty;
+        TotalDuration = TimeSpan.Zero;
+        TotalDurationFormatted = "00:00.000";
+    }
+
     private void ConvertWavToMp3(string inputPath, string outputPath, int bitrate)
     {
         using var reader = new AudioFileReader(inputPath);

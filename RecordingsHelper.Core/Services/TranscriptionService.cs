@@ -234,13 +234,6 @@ public class TranscriptionService
 
         // Merge adjacent segments from the same speaker
         var mergedSegments = MergeAdjacentSegments(segments);
-        
-        // Normalize first segment to start at 0 and last segment to end at audio duration
-        if (mergedSegments.Count > 0)
-        {
-            mergedSegments[0].StartTime = TimeSpan.Zero;
-            mergedSegments[^1].EndTime = GetAudioDuration(audioFilePath);
-        }
 
         return mergedSegments;
     }
@@ -1393,7 +1386,8 @@ public class TranscriptionService
 
         var json = System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
         {
-            WriteIndented = true
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         });
 
         await File.WriteAllTextAsync(outputPath, json);

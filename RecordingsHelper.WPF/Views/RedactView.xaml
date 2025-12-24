@@ -181,16 +181,21 @@
                     <!-- Playback Controls -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
                         <Button Style="{StaticResource MaterialDesignIconButton}"
-                                Command="{Binding PlayCommand}"
-                                ToolTip="Play"
+                                Command="{Binding PlayPauseCommand}"
+                                ToolTip="Play/Pause"
                                 Margin="4">
-                            <materialDesign:PackIcon Kind="Play" Width="32" Height="32"/>
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                Command="{Binding PauseCommand}"
-                                ToolTip="Pause"
-                                Margin="4">
-                            <materialDesign:PackIcon Kind="Pause" Width="32" Height="32"/>
+                            <materialDesign:PackIcon Width="32" Height="32">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="Play"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Kind" Value="Pause"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
                         </Button>
                         <Button Style="{StaticResource MaterialDesignIconButton}"
                                 Command="{Binding StopCommand}"

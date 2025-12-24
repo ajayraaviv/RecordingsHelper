@@ -15,6 +15,7 @@
     
     <UserControl.Resources>
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <converters:ZeroToVisibilityConverter x:Key="ZeroToVisibilityConverter"/>
@@ -221,10 +222,22 @@
                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                 IsEnabled="{Binding IsTranscribing, Converter={StaticResource InverseBooleanConverter}}"
                                 HorizontalAlignment="Left"
-                                Margin="0,0,0,8">
+                                Margin="0,0,8,8">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FolderOpen" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                 <TextBlock Text="Load Audio File"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <Button Command="{Binding ClearCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                IsEnabled="{Binding IsFileLoaded}"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,8"
+                                ToolTip="Clear loaded file and reset">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Close" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="Clear"/>
                             </StackPanel>
                         </Button>
 
@@ -299,8 +312,7 @@
                                         Minimum="0"
                                         Maximum="{Binding TotalDuration.TotalSeconds}"
                                         Value="{Binding SliderPosition, Mode=TwoWay}"
-                                        Style="{StaticResource MaterialDesignDiscreteSlider}"
-                                        AutoToolTipPlacement="None"
+                                        materialDesign:SliderAssist.OnlyShowFocusVisualWhileDragging="True"
                                         VerticalAlignment="Center"/>
 
                                 <TextBlock Grid.Column="2" 

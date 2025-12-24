@@ -64,44 +64,26 @@
 
             <!-- Menu Cards -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="1200" Margin="32">
+                <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" MaxWidth="1200" Margin="32">
                     <TextBlock Text="Select an Operation" 
                                Style="{StaticResource MaterialDesignHeadline4TextBlock}" 
                                HorizontalAlignment="Center" 
                                Margin="0,0,0,40"/>
                     
-                    <Grid>
+                    <!-- Redaction Category -->
+                    <TextBlock Text="Redaction" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                               Margin="8,0,8,16"
+                               Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                    <Grid Margin="0,0,0,32">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Merge Card -->
-                        <materialDesign:Card Grid.Row="0" Grid.Column="0" Margin="8" UniformCornerRadius="10">
-                            <Button Command="{Binding NavigateToMergeCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    MinHeight="140"
-                                    ToolTip="Combine multiple audio files into a single file. Drag and drop to reorder files before merging. Supports various audio formats.">
-                                <StackPanel Margin="20">
-                                    <materialDesign:PackIcon Kind="MusicNotePlus" Width="48" Height="48" 
-                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                    <TextBlock Text="Merge Audio Files" 
-                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
-                                               TextAlignment="Center" Margin="0,0,0,8"/>
-                                    <TextBlock Text="Combine multiple audio files into one" 
-                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
-                                </StackPanel>
-                            </Button>
-                        </materialDesign:Card>
 
                         <!-- Redact Card -->
-                        <materialDesign:Card Grid.Row="0" Grid.Column="1" Margin="8" UniformCornerRadius="10">
+                        <materialDesign:Card Grid.Column="0" Margin="8" UniformCornerRadius="10">
                             <Button Command="{Binding NavigateToRedactCommand}" 
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     MinHeight="140"
@@ -118,26 +100,8 @@
                             </Button>
                         </materialDesign:Card>
 
-                        <!-- Split Card -->
-                        <materialDesign:Card Grid.Row="0" Grid.Column="2" Margin="8" UniformCornerRadius="10">
-                            <Button Command="{Binding NavigateToSplitCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    MinHeight="140"
-                                    ToolTip="Split an audio file into multiple parts at specified time points. Add as many split points as needed. Each part is saved as a separate file.">
-                                <StackPanel Margin="20">
-                                    <materialDesign:PackIcon Kind="CallSplit" Width="48" Height="48" 
-                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                    <TextBlock Text="Split Audio File" 
-                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
-                                               TextAlignment="Center" Margin="0,0,0,8"/>
-                                    <TextBlock Text="Split audio into multiple parts" 
-                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
-                                </StackPanel>
-                            </Button>
-                        </materialDesign:Card>
-
                         <!-- Advanced Redact Card -->
-                        <materialDesign:Card Grid.Row="1" Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                        <materialDesign:Card Grid.Column="1" Margin="8" UniformCornerRadius="10">
                             <Button Command="{Binding NavigateToAdvancedRedactCommand}" 
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     MinHeight="140"
@@ -148,32 +112,27 @@
                                     <TextBlock Text="Advanced Redaction" 
                                                Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
                                                TextAlignment="Center" Margin="0,0,0,8"/>
-                                <TextBlock Text="Redact using transcript insights" 
-                                           TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
-                            </StackPanel>
-                        </Button>
-                    </materialDesign:Card>
-
-                        <!-- Convert to MP3 Card -->
-                        <materialDesign:Card Grid.Row="1" Grid.Column="1" Margin="8" UniformCornerRadius="10">
-                            <Button Command="{Binding NavigateToConvertCommand}" 
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    MinHeight="140"
-                                    ToolTip="Convert WAV files to MP3 format with compression options. Reduce file size while maintaining audio quality. Supports batch conversion.">
-                                <StackPanel Margin="20">
-                                    <materialDesign:PackIcon Kind="FileMusic" Width="48" Height="48" 
-                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                    <TextBlock Text="Convert to MP3" 
-                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
-                                               TextAlignment="Center" Margin="0,0,0,8"/>
-                                    <TextBlock Text="Convert WAV to MP3 with compression" 
+                                    <TextBlock Text="Redact using transcript insights" 
                                                TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
                                 </StackPanel>
                             </Button>
                         </materialDesign:Card>
+                    </Grid>
+
+                    <!-- Transcription Category -->
+                    <TextBlock Text="Transcription" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                               Margin="8,0,8,16"
+                               Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                    <Grid Margin="0,0,0,32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
                         <!-- Transcription Card -->
-                        <materialDesign:Card Grid.Row="1" Grid.Column="2" Margin="8" UniformCornerRadius="10">
+                        <materialDesign:Card Grid.Column="0" Margin="8" UniformCornerRadius="10">
                             <Button Command="{Binding NavigateToTranscriptionCommand}" 
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     MinHeight="140"
@@ -191,7 +150,7 @@
                         </materialDesign:Card>
 
                         <!-- Batch Transcription Card -->
-                        <materialDesign:Card Grid.Row="2" Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                        <materialDesign:Card Grid.Column="1" Margin="8" UniformCornerRadius="10">
                             <Button Command="{Binding NavigateToBatchTranscriptionCommand}" 
                                     Style="{StaticResource MaterialDesignFlatButton}"
                                     MinHeight="140"
@@ -207,12 +166,96 @@
                                 </StackPanel>
                             </Button>
                         </materialDesign:Card>
-                </Grid>
-            </StackPanel>
-        </ScrollViewer>
-    </Grid>
 
-    <!-- Content Area for Views -->
+                        <!-- Transcript Comparison Card -->
+                        <materialDesign:Card Grid.Column="2" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToTranscriptComparisonCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Compare multiple transcript versions side by side. Load different transcripts and sync scrolling with audio playback.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="CompareHorizontal" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Transcript Comparison" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Compare transcript versions side by side" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+                    </Grid>
+
+                    <!-- Audio Tools Category -->
+                    <TextBlock Text="Audio Tools" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                               Margin="8,0,8,16"
+                               Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+
+                        <!-- Merge Card -->
+                        <materialDesign:Card Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToMergeCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Combine multiple audio files into a single file. Drag and drop to reorder files before merging. Supports various audio formats.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="MusicNotePlus" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Merge Audio Files" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Combine multiple audio files into one" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+
+                        <!-- Split Card -->
+                        <materialDesign:Card Grid.Column="1" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToSplitCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Split an audio file into multiple parts at specified time points. Add as many split points as needed. Each part is saved as a separate file.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="CallSplit" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Split Audio File" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Split audio into multiple parts" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+
+                        <!-- Convert to MP3 Card -->
+                        <materialDesign:Card Grid.Column="2" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToConvertCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Convert WAV files to MP3 format with compression options. Reduce file size while maintaining audio quality. Supports batch conversion.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="FileMusic" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Convert to MP3" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Convert WAV to MP3 with compression" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>    <!-- Content Area for Views -->
         <Grid x:Name="ContentArea">
             <ContentControl Content="{Binding CurrentView}">
                 <ContentControl.Resources>
@@ -236,6 +279,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:BatchTranscriptionViewModel}">
                         <views:BatchTranscriptionView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:TranscriptComparisonViewModel}">
+                        <views:TranscriptComparisonView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>
