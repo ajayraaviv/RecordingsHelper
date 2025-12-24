@@ -28,9 +28,6 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     private TranscriptionSettings _settings = new();
 
     [ObservableProperty]
-    private string _batchTranscriptionId = string.Empty;
-
-    [ObservableProperty]
     private bool _enableDiarization = true;
 
     [ObservableProperty]
@@ -40,6 +37,15 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     private string _profanityFilterMode = "Masked";
 
     public string[] ProfanityFilterModes { get; } = new[] { "None", "Masked", "Removed", "Tags" };
+
+    [ObservableProperty]
+    private ObservableCollection<SpeechModel> _availableModels = new();
+
+    [ObservableProperty]
+    private SpeechModel? _selectedModel;
+
+    [ObservableProperty]
+    private bool _isLoadingModels;
 
     [ObservableProperty]
     private bool _isSubmitting;
@@ -62,6 +68,52 @@ public partial class BatchTranscriptionViewModel : ObservableObject
         if (settingsDialog.ShowDialog() == true)
         {
             SaveSettings();
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadModels()
+    {
+        if (string.IsNullOrWhiteSpace(Settings.SubscriptionKey) || string.IsNullOrWhiteSpace(Settings.Region))
+        {
+            MessageBox.Show("Please configure Azure Speech settings using the gear button.", "Settings Required",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            IsLoadingModels = true;
+            var models = await _transcriptionService.GetAvailableModelsAsync(
+                Settings.Region!,
+                Settings.SubscriptionKey!,
+                CancellationToken.None);
+
+            // Update collection on UI thread to prevent threading issues
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // Clear and re-add to prevent duplicates
+                AvailableModels.Clear();
+                foreach (var model in models)
+                {
+                    AvailableModels.Add(model);
+                }
+            });
+
+            if (AvailableModels.Count == 0)
+            {
+                MessageBox.Show("No models found for this region.", "Info",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error loading models: {ex.Message}", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoadingModels = false;
         }
     }
 
@@ -116,18 +168,17 @@ public partial class BatchTranscriptionViewModel : ObservableObject
             MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
         {
             Items.Clear();
-            BatchTranscriptionId = string.Empty;
         }
     }
 
     [RelayCommand]
-    private void CopyBatchId()
+    private void CopyBatchId(string? batchId)
     {
-        if (!string.IsNullOrWhiteSpace(BatchTranscriptionId))
+        if (!string.IsNullOrWhiteSpace(batchId))
         {
             try
             {
-                Clipboard.SetText(BatchTranscriptionId);
+                Clipboard.SetText(batchId);
                 MessageBox.Show("Batch ID copied to clipboard!", "Success",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -167,15 +218,19 @@ public partial class BatchTranscriptionViewModel : ObservableObject
             return;
         }
 
+        // Set submitting state immediately for instant UI feedback
         IsSubmitting = true;
+
+        // Force UI update before async work begins
+        await Task.Delay(1);
 
         try
         {
-            // Upload all files to blob storage and collect their SAS URLs
-            var blobUrls = new List<string>();
+            // Upload all files to blob storage in parallel and collect their SAS URLs
             var uploadFolder = $"batch-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
-            foreach (var item in notStartedItems)
+            // Create upload tasks for all items
+            var uploadTasks = notStartedItems.Select(async item =>
             {
                 item.Status = BatchTranscriptionStatus.Uploading;
                 item.StatusMessage = "Uploading to storage...";
@@ -188,10 +243,15 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                     uploadFolder,
                     CancellationToken.None);
 
-                blobUrls.Add(blobUrl);
                 item.BlobUrl = blobUrl;
                 item.StatusMessage = "Uploaded to storage";
-            }
+                
+                return new { Item = item, BlobUrl = blobUrl };
+            }).ToList();
+
+            // Execute all uploads in parallel and collect results
+            var uploadResults = await Task.WhenAll(uploadTasks);
+            var blobUrls = uploadResults.Select(r => r.BlobUrl).ToList();
 
             // Create a single batch transcription for all files using individual blob URLs with SAS tokens
             var options = new TranscriptionOptions
@@ -199,10 +259,12 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                 Mode = TranscriptionMode.Batch,
                 EnableDiarization = EnableDiarization,
                 MaxSpeakers = MaxSpeakers,
-                ProfanityFilterMode = ProfanityFilterMode
+                ProfanityFilterMode = ProfanityFilterMode,
+                Model = SelectedModel?.SelfLink,
+                ModelSupportsWordLevelTimestamps = SelectedModel?.SupportsWordLevelTimestamps ?? true
             };
 
-            BatchTranscriptionId = await _transcriptionService.CreateBatchTranscriptionWithUrlsAsync(
+            var batchTranscriptionId = await _transcriptionService.CreateBatchTranscriptionWithUrlsAsync(
                 blobUrls, // Individual blob URLs with SAS tokens
                 Settings,
                 options,
@@ -211,13 +273,13 @@ public partial class BatchTranscriptionViewModel : ObservableObject
             // Update all items with the batch transcription ID
             foreach (var item in notStartedItems)
             {
-                item.TranscriptionId = BatchTranscriptionId;
+                item.TranscriptionId = batchTranscriptionId;
                 item.Status = BatchTranscriptionStatus.Submitted;
                 item.StatusMessage = "Submitted";
                 item.SubmittedAt = DateTime.Now;
             }
 
-            MessageBox.Show($"Successfully submitted batch with {notStartedItems.Count} file(s) for transcription.\nBatch ID: {BatchTranscriptionId}", "Success",
+            MessageBox.Show($"Successfully submitted batch with {notStartedItems.Count} file(s) for transcription.\nBatch ID: {batchTranscriptionId}", "Success",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -241,10 +303,15 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     [RelayCommand]
     private async Task CheckStatusAll()
     {
-        if (string.IsNullOrWhiteSpace(BatchTranscriptionId))
+        var submittedItems = Items.Where(i => !string.IsNullOrWhiteSpace(i.TranscriptionId) && 
+            i.Status != BatchTranscriptionStatus.NotStarted &&
+            i.Status != BatchTranscriptionStatus.Succeeded &&
+            i.Status != BatchTranscriptionStatus.Failed).ToList();
+            
+        if (!submittedItems.Any())
         {
-            MessageBox.Show("No batch transcription ID found. Please submit files first.", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("No submitted files to check. Please submit files first.", "Info",
+                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -257,127 +324,125 @@ public partial class BatchTranscriptionViewModel : ObservableObject
 
         try
         {
-            var status = await _transcriptionService.GetBatchTranscriptionStatusAsync(
-                Settings.Region!,
-                Settings.SubscriptionKey!,
-                BatchTranscriptionId,
-                CancellationToken.None);
+            // Group items by their batch transcription ID
+            var batchGroups = submittedItems.GroupBy(i => i.TranscriptionId).ToList();
+            var totalSuccessCount = 0;
+            var totalFailedCount = 0;
+            var totalRunningCount = 0;
 
-            // If succeeded, get the detailed report to update individual file statuses
-            if (status.Status == BatchTranscriptionStatus.Succeeded)
+            foreach (var batchGroup in batchGroups)
             {
-                var report = await _transcriptionService.GetBatchTranscriptionReportAsync(
+                var batchId = batchGroup.Key!;
+                
+                var status = await _transcriptionService.GetBatchTranscriptionStatusAsync(
                     Settings.Region!,
                     Settings.SubscriptionKey!,
-                    BatchTranscriptionId,
+                    batchId,
                     CancellationToken.None);
 
-                if (report != null && report.RootElement.TryGetProperty("details", out var details))
+                // If succeeded, get the detailed report to update individual file statuses
+                if (status.Status == BatchTranscriptionStatus.Succeeded)
                 {
-                    // Update each item based on the report
-                    foreach (var detail in details.EnumerateArray())
+                    var report = await _transcriptionService.GetBatchTranscriptionReportAsync(
+                        Settings.Region!,
+                        Settings.SubscriptionKey!,
+                        batchId,
+                        CancellationToken.None);
+
+                    if (report != null && report.RootElement.TryGetProperty("details", out var details))
                     {
-                        var source = detail.GetProperty("source").GetString();
-                        var fileStatus = detail.GetProperty("status").GetString();
-
-                        // Find matching item by blob URL
-                        var item = Items.FirstOrDefault(i => 
-                            i.TranscriptionId == BatchTranscriptionId && 
-                            i.BlobUrl != null && 
-                            source != null && 
-                            source.Contains(Path.GetFileName(new Uri(i.BlobUrl).LocalPath), StringComparison.OrdinalIgnoreCase));
-
-                        if (item != null)
+                        // Update each item based on the report
+                        foreach (var detail in details.EnumerateArray())
                         {
-                            if (fileStatus == "Succeeded")
+                            var source = detail.GetProperty("source").GetString();
+                            var fileStatus = detail.GetProperty("status").GetString();
+
+                            // Find matching item by blob URL
+                            var item = Items.FirstOrDefault(i => 
+                                i.TranscriptionId == batchId && 
+                                i.BlobUrl != null && 
+                                source != null && 
+                                source.Contains(Path.GetFileName(new Uri(i.BlobUrl).LocalPath), StringComparison.OrdinalIgnoreCase));
+
+                            if (item != null)
                             {
-                                item.Status = BatchTranscriptionStatus.Succeeded;
-                                item.StatusMessage = "Succeeded";
-                                item.CompletedAt = DateTime.Now;
-                            }
-                            else if (fileStatus == "Failed")
-                            {
-                                item.Status = BatchTranscriptionStatus.Failed;
-                                item.StatusMessage = "Failed";
-                                
-                                // Get detailed error message if available
-                                var errorMessage = "Transcription failed for this file";
-                                if (detail.TryGetProperty("errorMessage", out var errorMsgProp))
+                                if (fileStatus == "Succeeded")
                                 {
-                                    errorMessage = errorMsgProp.GetString() ?? errorMessage;
+                                    item.Status = BatchTranscriptionStatus.Succeeded;
+                                    item.StatusMessage = "Succeeded";
+                                    item.CompletedAt = DateTime.Now;
+                                    totalSuccessCount++;
                                 }
-                                else if (detail.TryGetProperty("errorKind", out var errorKindProp))
+                                else if (fileStatus == "Failed")
                                 {
-                                    errorMessage = $"Error: {errorKindProp.GetString()}";
+                                    item.Status = BatchTranscriptionStatus.Failed;
+                                    item.StatusMessage = "Failed";
+                                    
+                                    // Get detailed error message if available
+                                    var errorMessage = "Transcription failed for this file";
+                                    if (detail.TryGetProperty("errorMessage", out var errorMsgProp))
+                                    {
+                                        errorMessage = errorMsgProp.GetString() ?? errorMessage;
+                                    }
+                                    else if (detail.TryGetProperty("errorKind", out var errorKindProp))
+                                    {
+                                        errorMessage = $"Error: {errorKindProp.GetString()}";
+                                    }
+                                    
+                                    item.ErrorMessage = errorMessage;
+                                    totalFailedCount++;
                                 }
-                                
-                                item.ErrorMessage = errorMessage;
                             }
                         }
                     }
-
-                    var successCount = report.RootElement.GetProperty("successfulTranscriptionsCount").GetInt32();
-                    var failedCount = report.RootElement.GetProperty("failedTranscriptionsCount").GetInt32();
-
-                    if (failedCount > 0)
-                    {
-                        MessageBox.Show($"Batch transcription completed with errors!\n\nSuccessful: {successCount}\nFailed: {failedCount}\n\nCheck the Error Message column for details.", "Completed with Errors",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
                     else
                     {
-                        MessageBox.Show($"Batch transcription completed successfully!\n\nSuccessful: {successCount}", "Success",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
+                        // Fallback: update all items with the same status
+                        foreach (var item in batchGroup)
+                        {
+                            item.Status = status.Status;
+                            item.StatusMessage = status.StatusMessage;
+                            item.CompletedAt = DateTime.Now;
+                            totalSuccessCount++;
+                        }
+                    }
+                }
+                else if (status.Status == BatchTranscriptionStatus.Failed)
+                {
+                    // Update all items in this batch
+                    foreach (var item in batchGroup)
+                    {
+                        item.Status = status.Status;
+                        item.StatusMessage = status.StatusMessage;
+                        item.ErrorMessage = status.ErrorMessage;
+                        totalFailedCount++;
                     }
                 }
                 else
                 {
-                    // Fallback: update all items with the same status
-                    foreach (var item in Items.Where(i => i.TranscriptionId == BatchTranscriptionId))
+                    // Update all items with running/submitted status
+                    foreach (var item in batchGroup)
                     {
                         item.Status = status.Status;
                         item.StatusMessage = status.StatusMessage;
-                        item.CompletedAt = DateTime.Now;
+                        totalRunningCount++;
                     }
-
-                    MessageBox.Show("Batch transcription completed successfully!", "Success",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
-            else if (status.Status == BatchTranscriptionStatus.Failed)
-            {
-                // Update all items
-                foreach (var item in Items.Where(i => i.TranscriptionId == BatchTranscriptionId))
-                {
-                    item.Status = status.Status;
-                    item.StatusMessage = status.StatusMessage;
-                    item.ErrorMessage = status.ErrorMessage;
-                }
 
-                var errorDetails = new StringBuilder();
-                errorDetails.AppendLine($"Batch ID: {BatchTranscriptionId}");
-                errorDetails.AppendLine($"Status: {status.StatusMessage}");
-                errorDetails.AppendLine($"Error: {status.ErrorMessage ?? "Unknown error"}");
-                
-                MessageBox.Show(errorDetails.ToString(), "Batch Transcription Failed",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            else
-            {
-                // Update all items with running/submitted status
-                foreach (var item in Items.Where(i => i.TranscriptionId == BatchTranscriptionId))
-                {
-                    item.Status = status.Status;
-                    item.StatusMessage = status.StatusMessage;
-                }
+            // Show summary
+            var message = new StringBuilder();
+            message.AppendLine($"Checked {batchGroups.Count} batch(es):");
+            if (totalSuccessCount > 0) message.AppendLine($"✓ Successful: {totalSuccessCount}");
+            if (totalFailedCount > 0) message.AppendLine($"✗ Failed: {totalFailedCount}");
+            if (totalRunningCount > 0) message.AppendLine($"⧗ Still running: {totalRunningCount}");
 
-                MessageBox.Show($"Batch status: {status.StatusMessage}\nBatch ID: {BatchTranscriptionId}", "Status",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            var icon = totalFailedCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information;
+            MessageBox.Show(message.ToString(), "Status Check Complete", MessageBoxButton.OK, icon);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error checking status for Batch ID {BatchTranscriptionId}:\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}", "Error",
+            MessageBox.Show($"Error checking status:\n{ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -515,7 +580,7 @@ public partial class BatchTranscriptionViewModel : ObservableObject
 
             var saveFileDialog = new SaveFileDialog
             {
-                Filter = "Text Files (*.txt)|*.txt|JSON Files (*.json)|*.json",
+                Filter = "JSON Files (*.json)|*.json|Text Files (*.txt)|*.txt",
                 FileName = $"{Path.GetFileNameWithoutExtension(item.FilePath)}_transcript",
                 Title = "Save Transcript"
             };
@@ -526,12 +591,9 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                 
                 if (extension == ".json")
                 {
-                    var json = JsonSerializer.Serialize(item.Segments, new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                    });
-                    await File.WriteAllTextAsync(saveFileDialog.FileName, json);
+                    // Merge adjacent segments from the same speaker before exporting
+                    var mergedSegments = MergeAdjacentSegments(item.Segments);
+                    await _transcriptionService.ExportToJsonAsync(mergedSegments, saveFileDialog.FileName);
                 }
                 else
                 {
@@ -548,6 +610,62 @@ public partial class BatchTranscriptionViewModel : ObservableObject
             MessageBox.Show($"Error saving transcript: {ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private List<TranscriptionSegment> MergeAdjacentSegments(List<TranscriptionSegment> segments)
+    {
+        if (segments == null || !segments.Any())
+            return new List<TranscriptionSegment>();
+
+        var mergedSegments = new List<TranscriptionSegment>();
+        var sortedSegments = segments.OrderBy(s => s.StartTime).ToList();
+
+        TranscriptionSegment? currentMerged = null;
+
+        foreach (var segment in sortedSegments)
+        {
+            if (currentMerged == null)
+            {
+                // Start a new merged segment
+                currentMerged = new TranscriptionSegment
+                {
+                    StartTime = segment.StartTime,
+                    EndTime = segment.EndTime,
+                    Speaker = segment.Speaker,
+                    Text = segment.Text,
+                    Confidence = segment.Confidence
+                };
+            }
+            else if (currentMerged.Speaker == segment.Speaker)
+            {
+                // Same speaker - merge the segments
+                currentMerged.EndTime = segment.EndTime;
+                currentMerged.Text += " " + segment.Text;
+                // Average the confidence
+                currentMerged.Confidence = (currentMerged.Confidence + segment.Confidence) / 2.0;
+            }
+            else
+            {
+                // Different speaker - save current and start a new one
+                mergedSegments.Add(currentMerged);
+                currentMerged = new TranscriptionSegment
+                {
+                    StartTime = segment.StartTime,
+                    EndTime = segment.EndTime,
+                    Speaker = segment.Speaker,
+                    Text = segment.Text,
+                    Confidence = segment.Confidence
+                };
+            }
+        }
+
+        // Don't forget to add the last merged segment
+        if (currentMerged != null)
+        {
+            mergedSegments.Add(currentMerged);
+        }
+
+        return mergedSegments;
     }
 
     private string GenerateTranscriptText(System.Collections.Generic.List<TranscriptionSegment> segments)
@@ -626,7 +744,6 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     {
         // Reset state to initial values
         Items.Clear();
-        BatchTranscriptionId = string.Empty;
         IsSubmitting = false;
     }
 }

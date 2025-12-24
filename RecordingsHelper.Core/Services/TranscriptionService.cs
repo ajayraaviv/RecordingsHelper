@@ -901,10 +901,11 @@ public class TranscriptionService
                 contentUrls = blobUrls,
                 locale = settings.Language,
                 displayName = $"Batch-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                model = string.IsNullOrWhiteSpace(options.Model) ? null : new { self = options.Model },
                 properties = new
                 {
                     diarizationEnabled = true,
-                    wordLevelTimestampsEnabled = true,
+                    wordLevelTimestampsEnabled = options.ModelSupportsWordLevelTimestamps,
                     punctuationMode = "DictatedAndAutomatic",
                     profanityFilterMode = options.ProfanityFilterMode,
                     diarization = new
@@ -925,9 +926,10 @@ public class TranscriptionService
                 contentUrls = blobUrls,
                 locale = settings.Language,
                 displayName = $"Batch-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                model = string.IsNullOrWhiteSpace(options.Model) ? null : new { self = options.Model },
                 properties = new
                 {
-                    wordLevelTimestampsEnabled = true,
+                    wordLevelTimestampsEnabled = options.ModelSupportsWordLevelTimestamps,
                     punctuationMode = "DictatedAndAutomatic",
                     profanityFilterMode = options.ProfanityFilterMode
                 }
@@ -1401,6 +1403,116 @@ public class TranscriptionService
         
         await File.WriteAllLinesAsync(outputPath, lines);
         return outputPath;
+    }
+
+    /// <summary>
+    /// Gets available base models for batch transcription in the specified region
+    /// Filters for en-US locale and returns most recent 15 models including Whisper
+    /// </summary>
+    public async Task<List<SpeechModel>> GetAvailableModelsAsync(
+        string region,
+        string subscriptionKey,
+        CancellationToken cancellationToken)
+    {
+        var baseUrl = $"https://{region}.api.cognitive.microsoft.com/speechtotext/v3.2";
+        // Filter by en-US locale
+        var url = $"{baseUrl}/models/base?filter=locale eq 'en-US'";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Add("Ocp-Apim-Subscription-Key", subscriptionKey);
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Failed to get models. Status: {response.StatusCode}, Error: {errorContent}");
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        System.Diagnostics.Debug.WriteLine($"Models API Response: {responseJson}");
+        var jsonDoc = JsonDocument.Parse(responseJson);
+
+        var models = new List<SpeechModel>();
+        
+        if (jsonDoc.RootElement.TryGetProperty("values", out var values))
+        {
+            foreach (var model in values.EnumerateArray())
+            {
+                if (model.TryGetProperty("self", out var selfLink))
+                {
+                    var modelUrl = selfLink.GetString();
+                    var displayName = model.TryGetProperty("displayName", out var nameProperty) 
+                        ? nameProperty.GetString() 
+                        : modelUrl;
+                    
+                    // Check if model supports batch transcription via properties.features.supportsTranscriptions
+                    bool supportsBatchTranscription = false;
+                    bool supportsWordLevelTimestamps = false; // Default to false
+                    if (model.TryGetProperty("properties", out var properties))
+                    {
+                        if (properties.TryGetProperty("features", out var features))
+                        {
+                            if (features.TryGetProperty("supportsTranscriptions", out var supportsTranscriptions))
+                            {
+                                supportsBatchTranscription = supportsTranscriptions.GetBoolean();
+                            }
+                            
+                            // Check for word-level timestamp support - if "Lexical" is in supportedOutputFormats
+                            if (features.TryGetProperty("supportedOutputFormats", out var outputFormats))
+                            {
+                                foreach (var format in outputFormats.EnumerateArray())
+                                {
+                                    var formatStr = format.GetString();
+                                    if (formatStr != null && formatStr.Equals("Lexical", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        supportsWordLevelTimestamps = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Skip models that don't support batch transcription
+                    if (!supportsBatchTranscription)
+                    {
+                        continue;
+                    }
+                    
+                    // Extract model ID from self link (last segment)
+                    var modelId = modelUrl?.Split('/').LastOrDefault();
+                    
+                    // Try to get creation date for sorting
+                    DateTime? createdDateTime = null;
+                    if (model.TryGetProperty("createdDateTime", out var createdProp))
+                    {
+                        if (DateTime.TryParse(createdProp.GetString(), out var parsed))
+                        {
+                            createdDateTime = parsed;
+                        }
+                    }
+                    
+                    if (!string.IsNullOrWhiteSpace(modelUrl) && !string.IsNullOrWhiteSpace(displayName))
+                    {
+                        models.Add(new SpeechModel 
+                        { 
+                            DisplayName = displayName, 
+                            SelfLink = modelUrl,
+                            ModelId = modelId ?? "",
+                            CreatedDateTime = createdDateTime,
+                            SupportsWordLevelTimestamps = supportsWordLevelTimestamps
+                        });
+                    }
+                }
+            }
+        }
+
+        // Sort by creation date descending (most recent first) and take top 15
+        return models
+            .OrderByDescending(m => m.CreatedDateTime ?? DateTime.MinValue)
+            .Take(15)
+            .ToList();
     }
 }
 

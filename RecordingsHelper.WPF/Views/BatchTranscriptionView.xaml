@@ -139,33 +139,70 @@
                           SelectedItem="{Binding ProfanityFilterMode}"
                           MinWidth="100"
                           VerticalAlignment="Center"
+                          Margin="0,0,24,0"
                           ToolTip="None: No filtering | Masked: Replace with asterisks | Removed: Remove from result | Tags: Add profanity tags"/>
-            </StackPanel>
-            
-            <!-- Batch ID Display -->
-            <StackPanel Grid.Column="1" 
-                        Orientation="Horizontal" 
-                        VerticalAlignment="Center"
-                        Visibility="{Binding BatchTranscriptionId, Converter={StaticResource NullToVisibilityConverter}}">
-                <TextBlock Text="Batch ID:" 
+                
+                <!-- Model Selection -->
+                <TextBlock Text="Model:"
                            Style="{StaticResource MaterialDesignBody2TextBlock}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"/>
-                <Border Background="{DynamicResource MaterialDesignDivider}"
-                        CornerRadius="4"
-                        Padding="8,4">
-                    <TextBlock Text="{Binding BatchTranscriptionId}" 
-                               FontFamily="Consolas"
-                               FontSize="11"
-                               VerticalAlignment="Center"/>
-                </Border>
-                <Button Command="{Binding CopyBatchIdCommand}"
-                        Style="{StaticResource MaterialDesignIconButton}"
-                        ToolTip="Copy Batch ID to clipboard"
+                <ComboBox ItemsSource="{Binding AvailableModels}"
+                          SelectedItem="{Binding SelectedModel}"
+                          MinWidth="250"
+                          IsEditable="False"
+                          IsTextSearchEnabled="True"
+                          TextSearch.TextPath="DisplayName"
+                          VerticalAlignment="Center"
+                          Margin="0,0,8,0"
+                          ToolTip="Select a model or leave empty for default">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4">
+                                <TextBlock Text="{Binding DisplayName}"
+                                           FontWeight="Medium"
+                                           FontSize="13"/>
+                                <TextBlock Text="{Binding ModelId}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding LoadModelsCommand}"
+                        ToolTip="Load available models"
+                        VerticalAlignment="Center"
                         Width="32"
-                        Height="32"
-                        Margin="4,0,0,0">
-                    <materialDesign:PackIcon Kind="ContentCopy" Width="18" Height="18"/>
+                        Height="32">
+                    <materialDesign:PackIcon Kind="Refresh" 
+                                             Width="20" 
+                                             Height="20"
+                                             RenderTransformOrigin="0.5,0.5">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="materialDesign:PackIcon">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLoadingModels}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard Name="RotateStoryboard">
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                     From="0" To="360" Duration="0:0:1" RepeatBehavior="Forever"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="RotateStoryboard"/>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                        <materialDesign:PackIcon.RenderTransform>
+                            <RotateTransform/>
+                        </materialDesign:PackIcon.RenderTransform>
+                    </materialDesign:PackIcon>
                 </Button>
             </StackPanel>
             </Grid>
@@ -190,10 +227,44 @@
                         IsEnabled="{Binding IsSubmitting, Converter={StaticResource InverseBooleanConverter}}"
                         Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Upload" 
+                        <materialDesign:PackIcon Kind="CloudUpload" 
                                                  VerticalAlignment="Center"
-                                                 Margin="0,0,8,0"/>
-                        <TextBlock Text="SUBMIT ALL"/>
+                                                 Margin="0,0,8,0">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSubmitting}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Name="SubmitSpinStoryboard">
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                         From="0" To="360" Duration="0:0:1" RepeatBehavior="Forever"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="SubmitSpinStoryboard"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                            <materialDesign:PackIcon.RenderTransform>
+                                <RotateTransform/>
+                            </materialDesign:PackIcon.RenderTransform>
+                        </materialDesign:PackIcon>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="SUBMIT ALL"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSubmitting}" Value="True">
+                                            <Setter Property="Text" Value="SUBMITTING..."/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Button>
 
@@ -284,6 +355,33 @@
                                         Binding="{Binding SubmittedAt, StringFormat='MM/dd/yy HH:mm'}"
                                         Width="120"
                                         IsReadOnly="True"/>
+
+                    <!-- Batch ID -->
+                    <DataGridTemplateColumn Header="Batch ID" Width="280">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding TranscriptionId}"
+                                               FontFamily="Consolas"
+                                               FontSize="10"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding TranscriptionId}"/>
+                                    <Button Command="{Binding DataContext.CopyBatchIdCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding TranscriptionId}"
+                                            Style="{StaticResource MaterialDesignIconButton}"
+                                            Width="24"
+                                            Height="24"
+                                            Padding="0"
+                                            Margin="4,0,0,0"
+                                            ToolTip="Copy Batch ID"
+                                            Visibility="{Binding TranscriptionId, Converter={StaticResource NullToVisibilityConverter}}">
+                                        <materialDesign:PackIcon Kind="ContentCopy" Width="14" Height="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
                     <!-- Actions -->
                     <DataGridTemplateColumn Header="Actions" Width="350">
