@@ -222,6 +222,17 @@
                     </StackPanel>
                 </Button>
 
+                <Button Command="{Binding AddBlobUrlsCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="CloudOutline" 
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,8,0"/>
+                        <TextBlock Text="ADD BLOB URLS"/>
+                    </StackPanel>
+                </Button>
+
                 <Button Command="{Binding SubmitAllCommand}"
                         Style="{StaticResource MaterialDesignRaisedButton}"
                         IsEnabled="{Binding IsSubmitting, Converter={StaticResource InverseBooleanConverter}}"
@@ -327,6 +338,46 @@
                                         Binding="{Binding FileName}"
                                         Width="*"
                                         IsReadOnly="True"/>
+
+                    <!-- Source Type Indicator -->
+                    <DataGridTemplateColumn Header="Source" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Width="16"
+                                                             Height="16"
+                                                             VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="File"/>
+                                                <Setter Property="ToolTip" Value="Local File"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFromBlobUrl}" Value="True">
+                                                        <Setter Property="Kind" Value="Cloud"/>
+                                                        <Setter Property="ToolTip" Value="Blob Storage"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock Margin="4,0,0,0"
+                                               VerticalAlignment="Center"
+                                               FontSize="11">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="File"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFromBlobUrl}" Value="True">
+                                                        <Setter Property="Text" Value="Blob"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
                     <!-- Status -->
                     <DataGridTemplateColumn Header="Status" Width="120">

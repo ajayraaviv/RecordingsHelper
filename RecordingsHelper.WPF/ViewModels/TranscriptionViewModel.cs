@@ -119,6 +119,17 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
     private string? _blobUrl;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartTranscriptionCommand))]
+    private bool _useBlobUrl = false;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartTranscriptionCommand))]
+    private string _blobSasUrlInput = string.Empty;
+
+    [ObservableProperty]
+    private bool _isAudioLoadedFromUrl = false;
+
+    [ObservableProperty]
     private string _profanityFilterMode = "Masked";
 
     public string[] ProfanityFilterModes { get; } = new[] { "None", "Masked", "Removed", "Tags" };
@@ -193,6 +204,9 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
                 IsFileLoaded = true;
                 TranscriptionSegments.Clear();
                 BlobUrl = null;  // Clear blob URL when new file is loaded
+                UseBlobUrl = false;  // Disable blob URL mode
+                BlobSasUrlInput = string.Empty;  // Clear blob URL input
+                IsAudioLoadedFromUrl = false;  // Reset audio loaded flag
                 StatusMessage = "File loaded successfully. Click 'Start Transcription' to begin.";
             }
             catch (Exception ex)
@@ -352,7 +366,35 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
             return;
         }
 
-        if (LoadedFilePath == null) return;
+        // Validate input based on mode
+        if (UseBlobUrl)
+        {
+            if (string.IsNullOrWhiteSpace(BlobSasUrlInput))
+            {
+                MessageBox.Show("Please enter a blob SAS URL.", "Blob URL Required",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            // Validate URL format
+            if (!Uri.TryCreate(BlobSasUrlInput, UriKind.Absolute, out var uri) || 
+                (uri.Scheme != "http" && uri.Scheme != "https"))
+            {
+                MessageBox.Show("Please enter a valid blob SAS URL (must start with http:// or https://).", "Invalid URL",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            
+            BlobUrl = BlobSasUrlInput;
+            LoadedFileName = Path.GetFileName(uri.LocalPath);
+            LoadedFilePath = BlobSasUrlInput; // Use URL as path for reference
+        }
+        else if (LoadedFilePath == null)
+        {
+            MessageBox.Show("Please load an audio file first.", "File Required",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         IsTranscribing = true;
         TranscriptionProgress = 0;
@@ -388,13 +430,20 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
                 });
             });
 
-            // Upload to blob storage if requested
-            if (UploadToBlobStorage && !string.IsNullOrWhiteSpace(BlobUrl))
+            // Handle blob URL scenarios
+            if (UseBlobUrl)
             {
+                // User provided their own blob URL - use it directly
+                StatusMessage = "Using provided blob SAS URL...";
+            }
+            else if (UploadToBlobStorage && !string.IsNullOrWhiteSpace(BlobUrl))
+            {
+                // Already uploaded in a previous transcription
                 StatusMessage = "Using existing blob URL...";
             }
             else if (UploadToBlobStorage)
             {
+                // Need to upload to blob storage
                 if (string.IsNullOrWhiteSpace(Settings.StorageAccountName) || 
                     string.IsNullOrWhiteSpace(Settings.StorageAccountKey) ||
                     string.IsNullOrWhiteSpace(Settings.StorageContainerName))
@@ -409,7 +458,7 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
                 var uploadFolder = "fasttranscription";
                 
                 BlobUrl = await _transcriptionService.UploadToBlobStorageAsync(
-                    LoadedFilePath,
+                    LoadedFilePath!,
                     Settings.StorageAccountName,
                     Settings.StorageAccountKey,
                     Settings.StorageContainerName,
@@ -431,12 +480,12 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
 
             List<TranscriptionSegment> segments;
             
-            if (UploadToBlobStorage && !string.IsNullOrWhiteSpace(BlobUrl))
+            if ((UploadToBlobStorage || UseBlobUrl) && !string.IsNullOrWhiteSpace(BlobUrl))
             {
                 // Use blob URL for transcription
                 segments = await _transcriptionService.TranscribeAudioFromBlobAsync(
                     BlobUrl,
-                    LoadedFilePath,
+                    LoadedFilePath!,
                     Settings,
                     options,
                     progressReporter,
@@ -466,6 +515,61 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
                 
                 StatusMessage = $"Transcription completed. {TranscriptionSegments.Count} segments found.";
             });
+
+            // Load audio for playback
+            if (UseBlobUrl && !string.IsNullOrWhiteSpace(BlobUrl))
+            {
+                // Only download if not already loaded
+                if (!IsAudioLoadedFromUrl)
+                {
+                    try
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            StatusMessage = "Loading audio for playback...";
+                        });
+                        
+                        // Download and load audio from blob URL
+                        await _audioPlayer.LoadFileFromUrlAsync(BlobUrl);
+                        
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            IsFileLoaded = true;
+                            TotalDuration = _audioPlayer.Duration;
+                            SliderPosition = 0;
+                            CurrentPosition = TimeSpan.Zero;
+                            IsAudioLoadedFromUrl = true;
+                            StatusMessage = $"Transcription completed. {TranscriptionSegments.Count} segments found.";
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            // Even if audio loading fails, still show the transcript
+                            IsFileLoaded = true;
+                            StatusMessage = $"Transcription completed. {TranscriptionSegments.Count} segments found. Audio playback unavailable.";
+                            System.Diagnostics.Debug.WriteLine($"Audio load error: {ex.Message}");
+                        });
+                    }
+                }
+                else
+                {
+                    // Audio already loaded from previous transcription
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        StatusMessage = $"Transcription completed. {TranscriptionSegments.Count} segments found.";
+                    });
+                }
+            }
+            else if (UseBlobUrl)
+            {
+                // When using blob URL but audio load didn't happen, still mark as loaded for transcript view
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsFileLoaded = true;
+                });
+            }
         }
         catch (OperationCanceledException)
         {
@@ -489,7 +593,14 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
         }
     }
 
-    private bool CanStartTranscription() => IsFileLoaded && !IsTranscribing && HasSettings;
+    private bool CanStartTranscription()
+    {
+        if (!HasSettings || IsTranscribing)
+            return false;
+            
+        // Can start if either a file is loaded OR a blob URL is provided
+        return IsFileLoaded || (UseBlobUrl && !string.IsNullOrWhiteSpace(BlobSasUrlInput));
+    }
 
     [RelayCommand(CanExecute = nameof(CanStopTranscription))]
     private void StopTranscription()
@@ -622,6 +733,9 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
         IsTranscribing = false;
         TranscriptionSegments.Clear();
         BlobUrl = null;
+        BlobSasUrlInput = string.Empty;
+        UseBlobUrl = false;
+        IsAudioLoadedFromUrl = false;
         TranscriptionProgress = 0;
         CurrentPosition = TimeSpan.Zero;
         SliderPosition = 0;

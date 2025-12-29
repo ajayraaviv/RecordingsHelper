@@ -138,8 +138,52 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                     {
                         FilePath = filePath,
                         Status = BatchTranscriptionStatus.NotStarted,
-                        StatusMessage = "Ready to submit"
+                        StatusMessage = "Ready to submit",
+                        IsFromBlobUrl = false
                     });
+                }
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void AddBlobUrls()
+    {
+        var dialog = new BlobUrlInputDialog
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var urls = dialog.BlobUrls;
+            if (urls != null && urls.Any())
+            {
+                foreach (var url in urls)
+                {
+                    // Check if URL already exists in list
+                    if (!Items.Any(i => i.BlobUrl.Equals(url, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var fileName = "Blob File";
+                        try
+                        {
+                            var uri = new Uri(url);
+                            fileName = Path.GetFileName(uri.LocalPath);
+                        }
+                        catch
+                        {
+                            // Use generic name if URL parsing fails
+                        }
+
+                        Items.Add(new BatchTranscriptionItem
+                        {
+                            FilePath = fileName, // Use filename for display
+                            BlobUrl = url,
+                            Status = BatchTranscriptionStatus.NotStarted,
+                            StatusMessage = "Ready to submit",
+                            IsFromBlobUrl = true
+                        });
+                    }
                 }
             }
         }
@@ -226,32 +270,48 @@ public partial class BatchTranscriptionViewModel : ObservableObject
 
         try
         {
-            // Upload all files to blob storage in parallel and collect their SAS URLs
-            var uploadFolder = $"batch-{DateTime.UtcNow:yyyyMMddHHmmss}";
+            // Separate items that need upload from those that already have blob URLs
+            var itemsToUpload = notStartedItems.Where(i => !i.IsFromBlobUrl).ToList();
+            var itemsWithBlobUrls = notStartedItems.Where(i => i.IsFromBlobUrl).ToList();
 
-            // Create upload tasks for all items
-            var uploadTasks = notStartedItems.Select(async item =>
+            var blobUrls = new List<string>();
+
+            // Upload local files to blob storage in parallel if needed
+            if (itemsToUpload.Any())
             {
-                item.Status = BatchTranscriptionStatus.Uploading;
-                item.StatusMessage = "Uploading to storage...";
+                var uploadFolder = $"batch-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
-                var blobUrl = await _transcriptionService.UploadToBlobStorageAsync(
-                    item.FilePath,
-                    Settings.StorageAccountName,
-                    Settings.StorageAccountKey,
-                    Settings.StorageContainerName,
-                    uploadFolder,
-                    CancellationToken.None);
+                // Create upload tasks for items that need uploading
+                var uploadTasks = itemsToUpload.Select(async item =>
+                {
+                    item.Status = BatchTranscriptionStatus.Uploading;
+                    item.StatusMessage = "Uploading to storage...";
 
-                item.BlobUrl = blobUrl;
-                item.StatusMessage = "Uploaded to storage";
-                
-                return new { Item = item, BlobUrl = blobUrl };
-            }).ToList();
+                    var blobUrl = await _transcriptionService.UploadToBlobStorageAsync(
+                        item.FilePath,
+                        Settings.StorageAccountName,
+                        Settings.StorageAccountKey,
+                        Settings.StorageContainerName,
+                        uploadFolder,
+                        CancellationToken.None);
 
-            // Execute all uploads in parallel and collect results
-            var uploadResults = await Task.WhenAll(uploadTasks);
-            var blobUrls = uploadResults.Select(r => r.BlobUrl).ToList();
+                    item.BlobUrl = blobUrl;
+                    item.StatusMessage = "Uploaded to storage";
+                    
+                    return new { Item = item, BlobUrl = blobUrl };
+                }).ToList();
+
+                // Execute all uploads in parallel and collect results
+                var uploadResults = await Task.WhenAll(uploadTasks);
+                blobUrls.AddRange(uploadResults.Select(r => r.BlobUrl));
+            }
+
+            // Add blob URLs from items that were already in blob storage
+            foreach (var item in itemsWithBlobUrls)
+            {
+                item.StatusMessage = "Using existing blob URL";
+                blobUrls.Add(item.BlobUrl);
+            }
 
             // Create a single batch transcription for all files using individual blob URLs with SAS tokens
             var options = new TranscriptionOptions

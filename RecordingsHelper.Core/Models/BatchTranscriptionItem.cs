@@ -10,6 +10,7 @@ public class BatchTranscriptionItem : INotifyPropertyChanged
     private string _filePath = string.Empty;
     private string _transcriptionId = string.Empty;
     private string _blobUrl = string.Empty;
+    private bool _isFromBlobUrl = false;
     private BatchTranscriptionStatus _status = BatchTranscriptionStatus.NotStarted;
     private string _statusMessage = "Ready to submit";
     private DateTime? _submittedAt;
@@ -54,6 +55,19 @@ public class BatchTranscriptionItem : INotifyPropertyChanged
             if (_blobUrl != value)
             {
                 _blobUrl = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool IsFromBlobUrl
+    {
+        get => _isFromBlobUrl;
+        set
+        {
+            if (_isFromBlobUrl != value)
+            {
+                _isFromBlobUrl = value;
                 OnPropertyChanged();
             }
         }
