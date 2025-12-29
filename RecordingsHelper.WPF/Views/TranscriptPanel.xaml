@@ -32,6 +32,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -60,6 +61,18 @@
                                 <TextBlock Text="Load" FontSize="12"/>
                             </StackPanel>
                         </Button>
+                        <Button Command="{Binding ToggleSpeakerEditorCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Height="28"
+                                Padding="8,4"
+                                Visibility="{Binding HasTranscript, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Margin="0,0,6,0"
+                                ToolTip="Edit speaker names">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Account" VerticalAlignment="Center" Width="16" Height="16" Margin="0,0,4,0"/>
+                                <TextBlock Text="Speakers" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
                         <Button Command="{Binding ClearTranscriptCommand}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
                                 Height="28"
@@ -81,18 +94,90 @@
                 </Grid>
 
                 <!-- Search Box -->
-                <TextBox Grid.Row="1"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         materialDesign:HintAssist.Hint="Search transcript..."
-                         materialDesign:HintAssist.HelperText="{Binding SegmentCountText}"
-                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         FontSize="12"
-                         Padding="8,6"
-                         Margin="0,0,0,16">
-                </TextBox>
+                <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             materialDesign:HintAssist.Hint="Search transcript..."
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             FontSize="12"
+                             Padding="8,6"
+                             Margin="0,0,0,4">
+                    </TextBox>
+                    <TextBlock Text="{Binding SegmentCountText}"
+                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"
+                               Margin="4,0,0,0"
+                               Visibility="{Binding HasTranscript, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+
+                <!-- Speaker Editor Panel -->
+                <Border Grid.Row="2"
+                        Visibility="{Binding ShowSpeakerEditor, Converter={StaticResource BoolToVisibilityConverter}}"
+                        BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                        BorderThickness="1"
+                        Background="{DynamicResource MaterialDesignCardBackground}"
+                        CornerRadius="4"
+                        Padding="8"
+                        Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Speaker Name Mapping"
+                                   Style="{StaticResource MaterialDesignBody2TextBlock}"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        
+                        <ItemsControl ItemsSource="{Binding SpeakerMappings}" Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding OriginalName}"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="11"
+                                                   Margin="0,0,4,0"/>
+                                        
+                                        <materialDesign:PackIcon Grid.Column="1"
+                                                                 Kind="ArrowRight"
+                                                                 Width="14"
+                                                                 Height="14"
+                                                                 VerticalAlignment="Center"
+                                                                 Margin="4,0"/>
+                                        
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="11"
+                                                 Padding="4,2"
+                                                 Margin="4,0,0,0"
+                                                 materialDesign:HintAssist.Hint="New name"
+                                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        
+                        <Button Command="{Binding UpdateSpeakersCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                HorizontalAlignment="Right"
+                                Height="28"
+                                Padding="12,4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentSave" 
+                                                         VerticalAlignment="Center" 
+                                                         Width="16" 
+                                                         Height="16" 
+                                                         Margin="0,0,4,0"/>
+                                <TextBlock Text="UPDATE &amp; SAVE" FontSize="11"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
 
                 <!-- Transcript List -->
-                <Border Grid.Row="2"
+                <Border Grid.Row="3"
                         BorderBrush="{DynamicResource MaterialDesignDivider}"
                         BorderThickness="1"
                         Background="{DynamicResource MaterialDesignTextFieldBoxBackground}"
@@ -131,10 +216,20 @@
                                                        Foreground="{DynamicResource PrimaryHueMidBrush}"
                                                        FontWeight="SemiBold"
                                                        Margin="0,0,12,0"/>
-                                            <TextBlock Text="{Binding Speaker}"
-                                                       FontSize="11"
+                                            <TextBlock FontSize="11"
                                                        FontStyle="Italic"
-                                                       Opacity="0.7"/>
+                                                       Opacity="0.7">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0}{1}">
+                                                        <Binding Path="Speaker"/>
+                                                        <Binding Path="OriginalSpeaker" TargetNullValue="" FallbackValue="">
+                                                            <Binding.Converter>
+                                                                <converters:SpeakerOriginalConverter/>
+                                                            </Binding.Converter>
+                                                        </Binding>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </StackPanel>
 
                                         <!-- Text -->

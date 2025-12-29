@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -51,6 +53,7 @@ public partial class TranscriptPanelViewModel : ObservableObject
 {
     private ObservableCollection<TranscriptionSegment> _allSegments = new();
     private bool _isUserScrolling = false;
+    private string _loadedTranscriptPath = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<TranscriptionSegment> _filteredSegments = new();
@@ -60,6 +63,12 @@ public partial class TranscriptPanelViewModel : ObservableObject
 
     [ObservableProperty]
     private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<SpeakerMapping> _speakerMappings = new();
+
+    [ObservableProperty]
+    private bool _showSpeakerEditor = false;
 
     [ObservableProperty]
     private int _selectedIndex = -1;
@@ -157,6 +166,11 @@ public partial class TranscriptPanelViewModel : ObservableObject
                         segment.Speaker = speaker.GetString() ?? "Unknown";
                     }
 
+                    if (element.TryGetProperty("originalSpeaker", out var originalSpeaker) || element.TryGetProperty("OriginalSpeaker", out originalSpeaker))
+                    {
+                        segment.OriginalSpeaker = originalSpeaker.GetString();
+                    }
+
                     if (element.TryGetProperty("text", out var text) || element.TryGetProperty("Text", out text))
                     {
                         segment.Text = text.GetString() ?? string.Empty;
@@ -175,10 +189,14 @@ public partial class TranscriptPanelViewModel : ObservableObject
                     _allSegments = segments;
                     FilteredSegments = new ObservableCollection<TranscriptionSegment>(segments);
                     HasTranscript = true;
+                    _loadedTranscriptPath = openFileDialog.FileName;
                     TranscriptFileName = Path.GetFileName(openFileDialog.FileName);
                     SearchText = string.Empty;
                     TotalSegmentCount = segments.Count;
                     FilteredSegmentCount = segments.Count;
+                    
+                    // Extract unique speakers and create mappings
+                    LoadSpeakerMappings();
                 }
             }
             catch (Exception ex)
@@ -195,10 +213,13 @@ public partial class TranscriptPanelViewModel : ObservableObject
         FilteredSegments.Clear();
         HasTranscript = false;
         TranscriptFileName = "No transcript loaded";
+        _loadedTranscriptPath = string.Empty;
         SelectedIndex = -1;
         SearchText = string.Empty;
         TotalSegmentCount = 0;
         FilteredSegmentCount = 0;
+        SpeakerMappings.Clear();
+        ShowSpeakerEditor = false;
     }
 
     [RelayCommand]
@@ -304,4 +325,148 @@ public partial class TranscriptPanelViewModel : ObservableObject
         SelectedIndex = -1;
         SearchText = string.Empty;
     }
+
+    [RelayCommand]
+    private void ToggleSpeakerEditor()
+    {
+        ShowSpeakerEditor = !ShowSpeakerEditor;
+    }
+
+    private void LoadSpeakerMappings()
+    {
+        var uniqueSpeakers = _allSegments
+            .Select(s => s.Speaker)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToList();
+
+        SpeakerMappings.Clear();
+        foreach (var speaker in uniqueSpeakers)
+        {
+            SpeakerMappings.Add(new SpeakerMapping
+            {
+                OriginalName = speaker,
+                NewName = speaker
+            });
+        }
+    }
+
+    [RelayCommand]
+    private async Task UpdateSpeakers()
+    {
+        if (string.IsNullOrEmpty(_loadedTranscriptPath) || !File.Exists(_loadedTranscriptPath))
+        {
+            MessageBox.Show("Cannot save: Transcript file path is not available.", "Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        try
+        {
+            // Validate for duplicate speaker names
+            var newNames = SpeakerMappings
+                .Select(m => m.NewName.Trim())
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            var duplicates = newNames
+                .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicates.Any())
+            {
+                MessageBox.Show(
+                    $"Duplicate speaker names detected:\n\n{string.Join("\n", duplicates)}\n\nEach speaker must have a unique name.",
+                    "Validation Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // Validate for empty names
+            var emptyNames = SpeakerMappings
+                .Where(m => string.IsNullOrWhiteSpace(m.NewName))
+                .Select(m => m.OriginalName)
+                .ToList();
+
+            if (emptyNames.Any())
+            {
+                MessageBox.Show(
+                    $"The following speakers cannot have empty names:\n\n{string.Join("\n", emptyNames)}",
+                    "Validation Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // Create mapping dictionary from changes
+            var mappings = SpeakerMappings
+                .Where(m => m.OriginalName != m.NewName.Trim())
+                .ToDictionary(m => m.OriginalName, m => m.NewName.Trim());
+
+            if (!mappings.Any())
+            {
+                MessageBox.Show("No speaker changes detected.", "Info", 
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Update all segments in memory - UI will auto-refresh due to INotifyPropertyChanged
+            foreach (var segment in _allSegments)
+            {
+                if (mappings.TryGetValue(segment.Speaker, out var newName))
+                {
+                    // Set OriginalSpeaker on first rename (if not already set)
+                    if (string.IsNullOrEmpty(segment.OriginalSpeaker))
+                    {
+                        segment.OriginalSpeaker = segment.Speaker;
+                    }
+                    
+                    segment.Speaker = newName;
+                }
+            }
+
+            // Save to file
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            var segmentsToSave = _allSegments.Select(s => new
+            {
+                speaker = s.Speaker,
+                originalSpeaker = s.OriginalSpeaker,
+                start = s.StartTime.ToString(@"hh\:mm\:ss\.fff"),
+                end = s.EndTime.ToString(@"hh\:mm\:ss\.fff"),
+                text = s.Text,
+                confidence = s.Confidence
+            }).ToList();
+
+            var json = JsonSerializer.Serialize(segmentsToSave, options);
+            await File.WriteAllTextAsync(_loadedTranscriptPath, json);
+
+            // Update mappings to reflect new state
+            LoadSpeakerMappings();
+
+            MessageBox.Show($"Speaker names updated and saved to {Path.GetFileName(_loadedTranscriptPath)}", 
+                "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error updating speakers: {ex.Message}", "Error", 
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+}
+
+public partial class SpeakerMapping : ObservableObject
+{
+    [ObservableProperty]
+    private string _originalName = string.Empty;
+
+    [ObservableProperty]
+    private string _newName = string.Empty;
 }
