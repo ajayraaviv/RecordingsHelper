@@ -132,6 +132,9 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
     [ObservableProperty]
     private string _profanityFilterMode = "Masked";
 
+    [ObservableProperty]
+    private string _phraseList = string.Empty;
+
     public string[] ProfanityFilterModes { get; } = new[] { "None", "Masked", "Removed", "Tags" };
 
     public Action<TranscriptionSegment>? ScrollToActiveSegment { get; set; }
@@ -475,7 +478,8 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
                 EnableDiarization = EnableDiarization,
                 MaxSpeakers = MaxSpeakers,
                 LlmPrompt = UseLlmEnhancement ? LlmPrompt : null,
-                ProfanityFilterMode = ProfanityFilterMode
+                ProfanityFilterMode = ProfanityFilterMode,
+                PhraseList = GetPhraseListFromInput()
             };
 
             List<TranscriptionSegment> segments;
@@ -741,6 +745,21 @@ Pauses, partial sentences, clarifications, and corrections may occur and should 
         SliderPosition = 0;
         StatusMessage = string.Empty;
         ActiveSegment = null;
+    }
+
+    private List<string>? GetPhraseListFromInput()
+    {
+        if (string.IsNullOrWhiteSpace(PhraseList))
+            return null;
+
+        var phrases = PhraseList
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Take(500) // Limit to 500 phrases as per Azure Speech Service limits
+            .ToList();
+
+        return phrases.Any() ? phrases : null;
     }
 
     public void Dispose()

@@ -19,6 +19,9 @@ public class TranscriptionOptions
     // Profanity filter mode: "None", "Masked", "Removed", "Tags"
     public string ProfanityFilterMode { get; set; } = "Masked";
     
+    // Phrase list for improving recognition (up to 500 phrases)
+    public List<string>? PhraseList { get; set; }
+    
     // Model self link (optional, if not specified uses default)
     public string? Model { get; set; }
     

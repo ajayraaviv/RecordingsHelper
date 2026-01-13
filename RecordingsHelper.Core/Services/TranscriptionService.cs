@@ -97,6 +97,9 @@ public class TranscriptionService
                 maxSpeakers = options.MaxSpeakers,
                 minSpeakers = 1
             } : null,
+            phrases = options.PhraseList != null && options.PhraseList.Any() 
+                ? options.PhraseList.ToArray() 
+                : null,
             enhancedMode = supportsEnhancedMode && options.UseLlmEnhancement ? new
             {
                 enabled = true,
@@ -128,12 +131,33 @@ public class TranscriptionService
         });
 
         // Send request
+        System.Diagnostics.Debug.WriteLine($"Sending request to: {url}");
         var response = await _httpClient.SendAsync(request, cancellationToken);
         
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            System.Diagnostics.Debug.WriteLine($"Speech API Error Response: {errorContent}");
+            
+            // Log detailed error information
+            System.Diagnostics.Debug.WriteLine($"=== Speech API Error (Blob URL) ===");
+            System.Diagnostics.Debug.WriteLine($"Status Code: {response.StatusCode} ({(int)response.StatusCode})");
+            System.Diagnostics.Debug.WriteLine($"Reason: {response.ReasonPhrase}");
+            System.Diagnostics.Debug.WriteLine($"Error Body: {errorContent}");
+            System.Diagnostics.Debug.WriteLine($"Response Headers:");
+            foreach (var header in response.Headers)
+            {
+                System.Diagnostics.Debug.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+            }
+            if (response.Content?.Headers != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Content Headers:");
+                foreach (var header in response.Content.Headers)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"====================================");
+            
             throw new Exception($"Speech API error: {response.StatusCode} - {errorContent}");
         }
 
@@ -294,6 +318,9 @@ public class TranscriptionService
                 maxSpeakers = options.MaxSpeakers,
                 minSpeakers = 1
             } : null,
+            phrases = options.PhraseList != null && options.PhraseList.Any() 
+                ? options.PhraseList.ToArray() 
+                : null,
             enhancedMode = supportsEnhancedMode && options.UseLlmEnhancement ? new
             {
                 enabled = true,
@@ -326,12 +353,33 @@ public class TranscriptionService
         });
 
         // Send request
+        System.Diagnostics.Debug.WriteLine($"Sending request to: {url}");
         var response = await _httpClient.SendAsync(request, cancellationToken);
         
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            System.Diagnostics.Debug.WriteLine($"Speech API Error Response: {errorContent}");
+            
+            // Log detailed error information
+            System.Diagnostics.Debug.WriteLine($"=== Speech API Error (Fast) ===");
+            System.Diagnostics.Debug.WriteLine($"Status Code: {response.StatusCode} ({(int)response.StatusCode})");
+            System.Diagnostics.Debug.WriteLine($"Reason: {response.ReasonPhrase}");
+            System.Diagnostics.Debug.WriteLine($"Error Body: {errorContent}");
+            System.Diagnostics.Debug.WriteLine($"Response Headers:");
+            foreach (var header in response.Headers)
+            {
+                System.Diagnostics.Debug.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+            }
+            if (response.Content?.Headers != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Content Headers:");
+                foreach (var header in response.Content.Headers)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"===============================");
+            
             throw new Exception($"Speech API error: {response.StatusCode} - {errorContent}");
         }
 
