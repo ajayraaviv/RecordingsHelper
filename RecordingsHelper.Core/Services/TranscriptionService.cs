@@ -1428,8 +1428,8 @@ public class TranscriptionService
     {
         var exportData = segments.Select(s => new
         {
-            start = s.StartTime.ToString(@"hh\:mm\:ss"),
-            end = s.EndTime.ToString(@"hh\:mm\:ss"),
+            start = s.StartTime.ToString(@"hh\:mm\:ss\.fff"),
+            end = s.EndTime.ToString(@"hh\:mm\:ss\.fff"),
             speaker = s.Speaker,
             text = s.Text
         });
@@ -1447,7 +1447,7 @@ public class TranscriptionService
     public async Task<string> ExportToTextAsync(List<TranscriptionSegment> segments, string outputPath)
     {
         var lines = segments.Select(s => 
-            $"{s.Speaker} [{s.StartTime:hh\\:mm\\:ss} - {s.EndTime:hh\\:mm\\:ss}]\n{s.Text}\n");
+            $"{s.Speaker} [{s.StartTime:hh\\:mm\\:ss\\.fff} - {s.EndTime:hh\\:mm\\:ss\\.fff}]\n{s.Text}\n");
         
         await File.WriteAllLinesAsync(outputPath, lines);
         return outputPath;

@@ -253,6 +253,33 @@
                             </Button>
                         </materialDesign:Card>
                     </Grid>
+                    
+                    <!-- Second Row for Audio Tools -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Training Segments Card -->
+                        <materialDesign:Card Grid.Column="0" Margin="8" UniformCornerRadius="10">
+                            <Button Command="{Binding NavigateToTrainingSegmentsCommand}" 
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    MinHeight="140"
+                                    ToolTip="Create training segments from audio files. Select and merge transcript segments, edit text, and export segments for AI training.">
+                                <StackPanel Margin="20">
+                                    <materialDesign:PackIcon Kind="MovieEdit" Width="48" Height="48" 
+                                                             HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="Training Segments" 
+                                               Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                               TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Extract and prepare audio segments for training" 
+                                               TextWrapping="Wrap" TextAlignment="Center" Opacity="0.7"/>
+                                </StackPanel>
+                            </Button>
+                        </materialDesign:Card>
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
         </Grid>    <!-- Content Area for Views -->
@@ -282,6 +309,9 @@
                     </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:TranscriptComparisonViewModel}">
                         <views:TranscriptComparisonView/>
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type vm:TrainingSegmentsViewModel}">
+                        <views:TrainingSegmentsView/>
                     </DataTemplate>
                 </ContentControl.Resources>
             </ContentControl>

@@ -744,7 +744,7 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                 currentSpeaker = segment.Speaker;
             }
 
-            sb.AppendLine($"[{segment.StartTime:hh\\:mm\\:ss} - {segment.EndTime:hh\\:mm\\:ss}] {segment.Text}");
+            sb.AppendLine($"[{segment.StartTime:hh\\:mm\\:ss\\.fff} - {segment.EndTime:hh\\:mm\\:ss\\.fff}] {segment.Text}");
         }
 
         return sb.ToString();

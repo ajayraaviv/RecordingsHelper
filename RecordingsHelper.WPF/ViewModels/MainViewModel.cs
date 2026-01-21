@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     public TranscriptionViewModel TranscriptionViewModel { get; }
     public BatchTranscriptionViewModel BatchTranscriptionViewModel { get; }
     public TranscriptComparisonViewModel TranscriptComparisonViewModel { get; }
+    public TrainingSegmentsViewModel TrainingSegmentsViewModel { get; }
 
     public MainViewModel()
     {
@@ -27,6 +28,7 @@ public partial class MainViewModel : ObservableObject
         TranscriptionViewModel = new TranscriptionViewModel();
         BatchTranscriptionViewModel = new BatchTranscriptionViewModel();
         TranscriptComparisonViewModel = new TranscriptComparisonViewModel();
+        TrainingSegmentsViewModel = new TrainingSegmentsViewModel();
         CurrentView = null; // Home page by default
     }
 
@@ -87,6 +89,13 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void NavigateToTrainingSegments()
+    {
+        CleanupCurrentView();
+        CurrentView = TrainingSegmentsViewModel;
+    }
+
+    [RelayCommand]
     private void NavigateToHome()
     {
         CleanupCurrentView();
@@ -107,6 +116,10 @@ public partial class MainViewModel : ObservableObject
         else if (CurrentView == TranscriptComparisonViewModel)
         {
             TranscriptComparisonViewModel.Cleanup();
+        }
+        else if (CurrentView == TrainingSegmentsViewModel)
+        {
+            TrainingSegmentsViewModel.Dispose();
         }
         else if (CurrentView == RedactViewModel)
         {

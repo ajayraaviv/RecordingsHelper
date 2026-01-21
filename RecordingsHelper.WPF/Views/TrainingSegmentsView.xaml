@@ -1,0 +1,309 @@
+<UserControl x:Class="RecordingsHelper.WPF.Views.TrainingSegmentsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:converters="clr-namespace:RecordingsHelper.WPF.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1000">
+    
+    <UserControl.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <materialDesign:ColorZone Grid.Row="0" Mode="PrimaryMid" Padding="16">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" 
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Command="{Binding DataContext.NavigateToHomeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Back to Home"
+                        Foreground="White">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="24" Height="24"/>
+                </Button>
+                
+                <TextBlock Text="Training Segments" 
+                           Style="{StaticResource MaterialDesignHeadline5TextBlock}" 
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </DockPanel>
+        </materialDesign:ColorZone>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Audio Player Card -->
+                <materialDesign:Card Grid.Row="0" Padding="16" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <TextBlock Text="Audio File" 
+                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}" 
+                                       VerticalAlignment="Center"/>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Command="{Binding LoadAudioFileCommand}"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                        Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FolderMusic" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Load Audio"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <Button Command="{Binding LoadTranscriptCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FileDocument" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Load Transcript"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- File Info -->
+                        <TextBlock Grid.Row="1" 
+                                   Text="{Binding LoadedFileName}"
+                                   FontWeight="Medium"
+                                   Margin="0,0,0,12"
+                                   Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                        <!-- Audio Player -->
+                        <Grid Grid.Row="2" Visibility="{Binding IsFileLoaded, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Playback Controls -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,16,0">
+                                <Button Command="{Binding PlayPauseCommand}"
+                                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                        ToolTip="Play/Pause"
+                                        Margin="0,0,8,0">
+                                    <materialDesign:PackIcon>
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="Play"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                        <Setter Property="Kind" Value="Pause"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </Button>
+                                <Button Command="{Binding StopCommand}"
+                                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
+                                        ToolTip="Stop">
+                                    <materialDesign:PackIcon Kind="Stop"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Timeline -->
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Slider Grid.Row="0"
+                                        Minimum="0"
+                                        Maximum="{Binding TotalDuration.TotalMilliseconds}"
+                                        Value="{Binding SliderPosition, Mode=TwoWay}"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,0,4"/>
+
+                                <Grid Grid.Row="1">
+                                    <TextBlock Text="{Binding CurrentPosition, Converter={StaticResource TimeSpanToStringConverter}}"
+                                               HorizontalAlignment="Left"
+                                               Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+                                    <TextBlock Text="{Binding TotalDuration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                               HorizontalAlignment="Right"
+                                               Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </Grid>
+                </materialDesign:Card>
+
+                <!-- Actions Card -->
+                <materialDesign:Card Grid.Row="1" Padding="16" Margin="0,0,0,16"
+                                     Visibility="{Binding HasTranscript, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource MaterialDesignBody1TextBlock}"/>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Command="{Binding ToggleSelectAllCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="SelectAll" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Toggle Select All"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Button Command="{Binding MergeSelectedCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="MergeType" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Merge Selected"/>
+                                </StackPanel>
+                            </Button>
+                            
+                            <Button Command="{Binding ProcessSegmentsCommand}"
+                                    Style="{StaticResource MaterialDesignRaisedButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Export" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Process Segments"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </materialDesign:Card>
+
+                <!-- Segments List -->
+                <materialDesign:Card Grid.Row="2" Padding="16"
+                                     Visibility="{Binding HasTranscript, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" 
+                                   Text="Transcript Segments" 
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                   Margin="0,0,0,12"/>
+
+                        <ListBox Grid.Row="1" 
+                                 ItemsSource="{Binding Segments}"
+                                 MaxHeight="600"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 BorderThickness="0"
+                                 Background="Transparent">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Focusable" Value="False"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource MaterialDesignDivider}"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="8"
+                                            Margin="0,0,0,4">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick" 
+                                                          Command="{Binding DataContext.SeekToSegmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}"/>
+                                        </Border.InputBindings>
+                                        
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Checkbox -->
+                                            <CheckBox Grid.Column="0" 
+                                                      IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      VerticalAlignment="Top"
+                                                      Margin="0,8,12,0"/>
+
+                                            <!-- Content -->
+                                            <Grid Grid.Column="1">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Header -->
+                                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,4">
+                                                    <TextBlock Text="{Binding Speaker}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource SecondaryHueMidBrush}"
+                                                               Margin="0,0,8,0"/>
+                                                    
+                                                    <TextBlock FontWeight="Medium"
+                                                               Foreground="{DynamicResource MaterialDesignBodyLight}">
+                                                        <Run Text="["/>
+                                                        <Run Text="{Binding StartTime, Converter={StaticResource TimeSpanToStringConverter}}"/>
+                                                        <Run Text=" - "/>
+                                                        <Run Text="{Binding EndTime, Converter={StaticResource TimeSpanToStringConverter}}"/>
+                                                        <Run Text="]"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+
+                                                <!-- Editable Text -->
+                                                <TextBox Grid.Row="1"
+                                                         Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                         TextWrapping="Wrap"
+                                                         AcceptsReturn="True"
+                                                         BorderThickness="0"
+                                                         Padding="0"
+                                                         Margin="0,4,0,0"
+                                                         materialDesign:HintAssist.Hint="Edit transcript text..."/>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </materialDesign:Card>
+
+                <!-- Empty State -->
+                <StackPanel Grid.Row="2"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Visibility="{Binding HasTranscript, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                    <materialDesign:PackIcon Kind="MovieEdit"
+                                             Width="64"
+                                             Height="64"
+                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                             HorizontalAlignment="Center"
+                                             Margin="0,0,0,16"/>
+                    <TextBlock Text="No transcript loaded"
+                               Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="Load an audio file and transcript to begin"
+                               Foreground="{DynamicResource MaterialDesignBodyLight}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
