@@ -56,6 +56,18 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
     private ObservableCollection<TrainingSegmentItem> _segments = new();
 
     [ObservableProperty]
+    private ObservableCollection<TrainingSegmentItem> _filteredSegments = new();
+
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    [ObservableProperty]
+    private bool _showHiddenSegments = true;
+
+    [ObservableProperty]
+    private int _selectedCount;
+
+    [ObservableProperty]
     private string _statusMessage = "Load an audio file and transcript to begin.";
 
     [ObservableProperty]
@@ -75,6 +87,16 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
         _positionTimer.Tick += OnPositionTimerTick;
     }
 
+    partial void OnSearchTextChanged(string value)
+    {
+        ApplyFilters();
+    }
+
+    partial void OnShowHiddenSegmentsChanged(bool value)
+    {
+        ApplyFilters();
+    }
+
     private void OnPositionTimerTick(object? sender, EventArgs e)
     {
         if (!IsPlaying) return;
@@ -83,6 +105,8 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
         SliderPosition = CurrentPosition.TotalMilliseconds;
 
         // Update active segment based on current position
+        // Note: We search all Segments (not FilteredSegments) to ensure playback
+        // tracking works correctly even when segments are hidden or filtered
         var currentSegment = Segments.FirstOrDefault(s =>
             CurrentPosition >= s.StartTime && CurrentPosition <= s.EndTime);
 
@@ -167,7 +191,7 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
 
                 Segments = segments;
                 HasTranscript = true;
-                StatusMessage = $"Loaded {Segments.Count} segments. Select segments to extract.";
+                UpdateStatusMessage();
                 
                 // Subscribe to property changes on segments to update command state
                 foreach (var segment in Segments)
@@ -176,10 +200,22 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
                     {
                         if (e.PropertyName == nameof(TrainingSegmentItem.IsSelected))
                         {
+                            UpdateSelectedCount();
                             ProcessSegmentsCommand.NotifyCanExecuteChanged();
+                        }
+                        else if (e.PropertyName == nameof(TrainingSegmentItem.IsHidden))
+                        {
+                            // Prevent hiding selected segments
+                            if (segment.IsHidden && segment.IsSelected)
+                            {
+                                segment.IsHidden = false;
+                            }
                         }
                     };
                 }
+                
+                // Apply initial filter
+                ApplyFilters();
             }
             catch (Exception ex)
             {
@@ -282,11 +318,12 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleSelectAll()
     {
-        var anySelected = Segments.Any(s => s.IsSelected);
+        var allSelected = Segments.All(s => s.IsSelected);
         foreach (var segment in Segments)
         {
-            segment.IsSelected = !anySelected;
+            segment.IsSelected = !allSelected;
         }
+        UpdateSelectedCount();
         ProcessSegmentsCommand.NotifyCanExecuteChanged();
     }
 
@@ -346,6 +383,7 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
         MessageBox.Show($"Merged {selectedSegments.Count} segments into 1.\n\nNote: To restore original segments, reload the transcript.", 
             "Segments Merged", MessageBoxButton.OK, MessageBoxImage.Information);
         
+        UpdateSelectedCount();
         ProcessSegmentsCommand.NotifyCanExecuteChanged();
     }
 
@@ -454,6 +492,121 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
         });
     }
 
+    private void ApplyFilters()
+    {
+        if (Segments == null || Segments.Count == 0)
+        {
+            FilteredSegments.Clear();
+            return;
+        }
+
+        var filtered = Segments.AsEnumerable();
+
+        // Apply hidden filter
+        if (!ShowHiddenSegments)
+        {
+            filtered = filtered.Where(s => !s.IsHidden);
+        }
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            var searchLower = SearchText.ToLower();
+            filtered = filtered.Where(s => 
+                s.Text.ToLower().Contains(searchLower) || 
+                s.Speaker.ToLower().Contains(searchLower));
+        }
+
+        // Update collection efficiently to reduce flickering
+        var filteredList = filtered.ToList();
+        
+        // Only update if the collection actually changed
+        if (FilteredSegments.Count != filteredList.Count || 
+            !FilteredSegments.SequenceEqual(filteredList))
+        {
+            FilteredSegments = new ObservableCollection<TrainingSegmentItem>(filteredList);
+        }
+    }
+
+    private void UpdateSelectedCount()
+    {
+        SelectedCount = Segments?.Count(s => s.IsSelected) ?? 0;
+        UpdateStatusMessage();
+    }
+
+    private void UpdateStatusMessage()
+    {
+        if (!HasTranscript)
+        {
+            StatusMessage = "Load an audio file and transcript to begin.";
+            return;
+        }
+
+        var totalSegments = Segments?.Count ?? 0;
+        if (SelectedCount > 0)
+        {
+            StatusMessage = $"Loaded {totalSegments} segments. {SelectedCount} selected for extraction.";
+        }
+        else
+        {
+            StatusMessage = $"Loaded {totalSegments} segments. Select segments to extract.";
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleHideSegment(TrainingSegmentItem segment)
+    {
+        if (segment == null) return;
+
+        // Don't allow hiding selected segments (UI button should be hidden, but adding check for safety)
+        if (segment.IsSelected)
+            return;
+
+        segment.IsHidden = !segment.IsHidden;
+        
+        // Apply filters without full rebuild to reduce flickering
+        if (!ShowHiddenSegments)
+        {
+            ApplyFilters();
+        }
+    }
+
+    [RelayCommand]
+    private void ClearSearch()
+    {
+        SearchText = string.Empty;
+    }
+
+    public void Cleanup()
+    {
+        // Stop audio playback
+        if (IsPlaying)
+        {
+            _audioPlayer.Stop();
+            IsPlaying = false;
+            _positionTimer.Stop();
+        }
+
+        // Reset all state
+        LoadedAudioFilePath = null;
+        LoadedFileName = string.Empty;
+        IsFileLoaded = false;
+        IsPaused = false;
+        TotalDuration = TimeSpan.Zero;
+        CurrentPosition = TimeSpan.Zero;
+        SliderPosition = 0;
+        
+        Segments.Clear();
+        FilteredSegments.Clear();
+        
+        SearchText = string.Empty;
+        ShowHiddenSegments = true;
+        SelectedCount = 0;
+        HasTranscript = false;
+        ActiveSegment = null;
+        StatusMessage = "Load an audio file and transcript to begin.";
+    }
+
     public void Dispose()
     {
         _positionTimer?.Stop();
@@ -477,4 +630,7 @@ public partial class TrainingSegmentItem : ObservableObject
 
     [ObservableProperty]
     private bool _isSelected;
+
+    [ObservableProperty]
+    private bool _isHidden;
 }

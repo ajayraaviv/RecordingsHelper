@@ -11,6 +11,7 @@
     <UserControl.Resources>
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:BoolToIconConverter x:Key="BoolToIconConverter"/>
     </UserControl.Resources>
 
     <Grid>
@@ -192,16 +193,42 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" 
-                                   Text="Transcript Segments" 
-                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                   Margin="0,0,0,12"/>
+                        <!-- Header with Search -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <TextBlock Text="Transcript Segments" 
+                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                       VerticalAlignment="Center"/>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <ToggleButton IsChecked="{Binding ShowHiddenSegments}"
+                                              Style="{StaticResource MaterialDesignActionToggleButton}"
+                                              ToolTip="Show/Hide hidden segments"
+                                              Margin="0,0,8,0">
+                                    <ToggleButton.Content>
+                                        <materialDesign:PackIcon Kind="EyeOff"/>
+                                    </ToggleButton.Content>
+                                    <materialDesign:ToggleButtonAssist.OnContent>
+                                        <materialDesign:PackIcon Kind="Eye"/>
+                                    </materialDesign:ToggleButtonAssist.OnContent>
+                                </ToggleButton>
+                            </StackPanel>
+                        </Grid>
 
-                        <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding Segments}"
+                        <!-- Search Box -->
+                        <Grid Grid.Row="1" Margin="0,0,0,12">
+                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Search segments by text or speaker..."
+                                     materialDesign:TextFieldAssist.HasClearButton="True"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}">
+                            </TextBox>
+                        </Grid>
+
+                        <ListBox Grid.Row="2" 
+                                 ItemsSource="{Binding FilteredSegments}"
                                  MaxHeight="600"
                                  VirtualizingPanel.IsVirtualizing="True"
                                  VirtualizingPanel.VirtualizationMode="Recycling"
@@ -233,6 +260,7 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
                                             <!-- Checkbox -->
@@ -276,6 +304,20 @@
                                                          Margin="0,4,0,0"
                                                          materialDesign:HintAssist.Hint="Edit transcript text..."/>
                                             </Grid>
+                                            
+                                            <!-- Hide Button -->
+                                            <Button Grid.Column="2"
+                                                    Command="{Binding DataContext.ToggleHideSegmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource MaterialDesignIconButton}"
+                                                    ToolTip="Hide this segment"
+                                                    Visibility="{Binding IsSelected, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                                    VerticalAlignment="Top"
+                                                    Margin="8,4,0,0">
+                                                <materialDesign:PackIcon Kind="{Binding IsHidden, Converter={StaticResource BoolToIconConverter}}" 
+                                                                         Width="20" 
+                                                                         Height="20"/>
+                                            </Button>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

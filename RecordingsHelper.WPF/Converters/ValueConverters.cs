@@ -192,3 +192,20 @@ public class SecondsToTimeStringConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
+
+public class BoolToIconConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool isHidden)
+        {
+            return isHidden ? "Eye" : "EyeOff";
+        }
+        return "EyeOff";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

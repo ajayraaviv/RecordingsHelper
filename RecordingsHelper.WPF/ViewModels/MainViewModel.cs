@@ -119,7 +119,7 @@ public partial class MainViewModel : ObservableObject
         }
         else if (CurrentView == TrainingSegmentsViewModel)
         {
-            TrainingSegmentsViewModel.Dispose();
+            TrainingSegmentsViewModel.Cleanup();
         }
         else if (CurrentView == RedactViewModel)
         {
