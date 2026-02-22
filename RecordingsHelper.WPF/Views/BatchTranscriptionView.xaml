@@ -105,8 +105,12 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal">
                     <CheckBox Content="Diarization"
                               IsChecked="{Binding EnableDiarization}"
                               VerticalAlignment="Center"
@@ -204,6 +208,18 @@
                         </materialDesign:PackIcon.RenderTransform>
                     </materialDesign:PackIcon>
                 </Button>
+            </StackPanel>
+
+            <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                <TextBlock Text="Custom Model ID:"
+                           Style="{StaticResource MaterialDesignBody2TextBlock}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <TextBox Text="{Binding CustomModelId, UpdateSourceTrigger=PropertyChanged}"
+                         MinWidth="250"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="Model ID or full model URL (overrides selection)"
+                         ToolTip="Enter a custom model ID (e.g., a GUID) or full model URL. When set, this overrides the selected model."/>
             </StackPanel>
             </Grid>
         </materialDesign:Card>

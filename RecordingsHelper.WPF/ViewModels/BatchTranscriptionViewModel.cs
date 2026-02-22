@@ -45,6 +45,25 @@ public partial class BatchTranscriptionViewModel : ObservableObject
     private SpeechModel? _selectedModel;
 
     [ObservableProperty]
+    private string _customModelId = string.Empty;
+
+    partial void OnCustomModelIdChanged(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && SelectedModel != null)
+        {
+            SelectedModel = null;
+        }
+    }
+
+    partial void OnSelectedModelChanged(SpeechModel? value)
+    {
+        if (value != null && !string.IsNullOrWhiteSpace(CustomModelId))
+        {
+            CustomModelId = string.Empty;
+        }
+    }
+
+    [ObservableProperty]
     private bool _isLoadingModels;
 
     [ObservableProperty]
@@ -320,8 +339,8 @@ public partial class BatchTranscriptionViewModel : ObservableObject
                 EnableDiarization = EnableDiarization,
                 MaxSpeakers = MaxSpeakers,
                 ProfanityFilterMode = ProfanityFilterMode,
-                Model = SelectedModel?.SelfLink,
-                ModelSupportsWordLevelTimestamps = SelectedModel?.SupportsWordLevelTimestamps ?? true
+                Model = ResolveModelSelfLink(),
+                ModelSupportsWordLevelTimestamps = ResolveModelSupportsWordLevelTimestamps()
             };
 
             var batchTranscriptionId = await _transcriptionService.CreateBatchTranscriptionWithUrlsAsync(
@@ -805,5 +824,30 @@ public partial class BatchTranscriptionViewModel : ObservableObject
         // Reset state to initial values
         Items.Clear();
         IsSubmitting = false;
+    }
+
+    private string? ResolveModelSelfLink()
+    {
+        var custom = CustomModelId?.Trim();
+        if (!string.IsNullOrWhiteSpace(custom))
+        {
+            if (custom.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                return custom;
+
+            if (!string.IsNullOrWhiteSpace(Settings.Region))
+            {
+                return $"https://{Settings.Region}.api.cognitive.microsoft.com/speechtotext/v3.2/models/{custom}";
+            }
+        }
+
+        return SelectedModel?.SelfLink;
+    }
+
+    private bool ResolveModelSupportsWordLevelTimestamps()
+    {
+        if (!string.IsNullOrWhiteSpace(CustomModelId))
+            return true;
+
+        return SelectedModel?.SupportsWordLevelTimestamps ?? true;
     }
 }

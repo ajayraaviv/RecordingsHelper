@@ -330,7 +330,7 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void MergeSelected()
     {
-        var selectedSegments = Segments.Where(s => s.IsSelected).OrderBy(s => s.StartTime).ToList();
+        var selectedSegments = Segments.Where(s => s.IsSelected).ToList();
         
         if (selectedSegments.Count < 2)
         {
@@ -339,13 +339,16 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // Check if segments are contiguous
-        for (int i = 0; i < selectedSegments.Count - 1; i++)
+        // Get indices of selected segments
+        var selectedIndices = selectedSegments
+            .Select(seg => Segments.IndexOf(seg))
+            .OrderBy(idx => idx)
+            .ToList();
+
+        // Check if segments are contiguous by checking consecutive indices
+        for (int i = 0; i < selectedIndices.Count - 1; i++)
         {
-            var currentIndex = Segments.IndexOf(selectedSegments[i]);
-            var nextIndex = Segments.IndexOf(selectedSegments[i + 1]);
-            
-            if (nextIndex != currentIndex + 1)
+            if (selectedIndices[i + 1] != selectedIndices[i] + 1)
             {
                 MessageBox.Show("Selected segments must be contiguous (next to each other).", "Merge Segments", 
                     MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -353,18 +356,21 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
             }
         }
 
+        // Get segments in index order for merging
+        var segmentsInOrder = selectedIndices.Select(idx => Segments[idx]).ToList();
+
         // Create merged segment
         var mergedSegment = new TrainingSegmentItem
         {
-            StartTime = selectedSegments.First().StartTime,
-            EndTime = selectedSegments.Last().EndTime,
-            Text = string.Join(" ", selectedSegments.Select(s => s.Text)),
-            Speaker = selectedSegments.First().Speaker,
+            StartTime = segmentsInOrder.First().StartTime,
+            EndTime = segmentsInOrder.Last().EndTime,
+            Text = string.Join(" ", segmentsInOrder.Select(s => s.Text)),
+            Speaker = segmentsInOrder.First().Speaker,
             IsSelected = true
         };
 
-        // Remove selected segments and insert merged segment
-        var firstIndex = Segments.IndexOf(selectedSegments.First());
+        // Remove selected segments and insert merged segment at the first index
+        var firstIndex = selectedIndices.First();
         foreach (var segment in selectedSegments)
         {
             Segments.Remove(segment);
@@ -382,6 +388,9 @@ public partial class TrainingSegmentsViewModel : ObservableObject, IDisposable
 
         MessageBox.Show($"Merged {selectedSegments.Count} segments into 1.\n\nNote: To restore original segments, reload the transcript.", 
             "Segments Merged", MessageBoxButton.OK, MessageBoxImage.Information);
+        
+        // Reapply filters to update the display
+        ApplyFilters();
         
         UpdateSelectedCount();
         ProcessSegmentsCommand.NotifyCanExecuteChanged();
